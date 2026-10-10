@@ -3,10 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3457",
     "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "start": "next start -p 3457",
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:db": "supabase test db",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -17,6 +20,7 @@
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "server-only": "^0.0.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -29,6 +33,7 @@
     "supabase": "^2.120.0",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "vite": "^8.3.4",
     "vitest": "^5.0.3"
   }
 }
