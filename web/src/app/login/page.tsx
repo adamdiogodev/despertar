@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser, homePathFor } from "@/lib/auth";
 import { LoginForm } from "./login-form";
@@ -20,7 +21,9 @@ export default async function LoginPage() {
         <p className="mt-6 text-center text-[11px] text-t3">
           Equipe, terapeutas e famílias usam o mesmo acesso. O perfil é definido pela clínica.
           <br />
-          Esqueceu a senha? Fale com a recepção.
+          <Link href="/auth/forgot-password" className="font-semibold text-primary">
+            Esqueci minha senha
+          </Link>
         </p>
       </div>
     </main>

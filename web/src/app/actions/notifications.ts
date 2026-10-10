@@ -13,7 +13,7 @@ export async function markAllNotificationsRead() {
 }
 
 export async function markNotificationRead(id: string) {
-  const parsed = z.string().uuid().safeParse(id);
+  const parsed = z.string().guid().safeParse(id);
   if (!parsed.success) return;
   const user = await requireUser();
   const supabase = await createClient();

@@ -37,11 +37,13 @@ const KIND_ICONS: Record<string, string> = {
 export function NotificationBell({ userId, initial, allHref }: { userId: string; initial: NotificationItem[]; allHref: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState(initial);
+  // Optimistic "read" marks on top of the server-rendered list.
+  const [readIds, setReadIds] = useState<Set<string> | "all">(new Set());
   const [, startTransition] = useTransition();
   const boxRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => setItems(initial), [initial]);
+  const items = initial.map((item) =>
+    !item.read_at && (readIds === "all" || readIds.has(item.id)) ? { ...item, read_at: new Date().toISOString() } : item,
+  );
 
   // Live updates: RLS on notifications guarantees only the user's rows arrive.
   useEffect(() => {
@@ -91,7 +93,7 @@ export function NotificationBell({ userId, initial, allHref }: { userId: string;
                 type="button"
                 className="text-xs font-semibold text-primary"
                 onClick={() => {
-                  setItems((current) => current.map((item) => ({ ...item, read_at: item.read_at ?? new Date().toISOString() })));
+                  setReadIds("all");
                   startTransition(() => markAllNotificationsRead());
                 }}
               >
@@ -107,7 +109,10 @@ export function NotificationBell({ userId, initial, allHref }: { userId: string;
                 href={item.link ?? allHref}
                 onClick={() => {
                   setOpen(false);
-                  if (!item.read_at) startTransition(() => markNotificationRead(item.id));
+                  if (!item.read_at) {
+                    setReadIds((current) => (current === "all" ? current : new Set(current).add(item.id)));
+                    startTransition(() => markNotificationRead(item.id));
+                  }
                 }}
                 className={cn("flex gap-3 border-b border-line-light px-4 py-3 hover:bg-line-light", !item.read_at && "bg-primary-light/50")}
               >

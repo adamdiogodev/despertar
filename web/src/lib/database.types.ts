@@ -883,6 +883,16 @@ isOneToOne: false
 "is_therapist_of_family":
 { Args: { "target_family": string,"therapist"?: string }; Returns: boolean
                            },
+"list_message_contacts":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "full_name": string,"id": string,"role": Database["public"]['Enums']["app_role"],"specialty": string
+            }[]
+                           },
+"list_my_conversations":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "can_send": boolean,"conversation_id": string,"last_message_at": string,"last_message_body": string,"last_message_sender_id": string,"other_full_name": string,"other_profile_id": string,"other_role": Database["public"]['Enums']["app_role"],"unread_count": number
+            }[]
+                           },
 "local_date":
 { Args: { "ts": string }; Returns: string
                            },
