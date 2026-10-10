@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+/* Visual identity taken from the approved mock (docs/mock/sistema-despertar.html). */
+@theme {
+  --color-primary: #2e86de;
+  --color-primary-dark: #1a6cb5;
+  --color-primary-light: #ebf4ff;
+  --color-sidebar: #0d2137;
+  --color-sidebar-hover: #162f4a;
+  --color-page: #f0f4f8;
+  --color-line: #e2e8f0;
+  --color-line-light: #f7fafc;
+  --color-t1: #1a202c;
+  --color-t2: #4a5568;
+  --color-t3: #a0aec0;
+  --color-ok: #38a169;
+  --color-ok-bg: #f0fff4;
+  --color-warn: #d69e2e;
+  --color-warn-bg: #fffff0;
+  --color-danger: #e53e3e;
+  --color-danger-bg: #fff5f5;
+  --color-info: #3182ce;
+  --color-info-bg: #ebf8ff;
+  --color-accent: #805ad5;
+  --color-accent-bg: #faf5ff;
+  --radius-card: 12px;
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-pop: 0 8px 32px rgba(0, 0, 0, 0.13);
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+html,
+body {
+  background: var(--color-page);
+  color: var(--color-t1);
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(160, 174, 192, 0.5);
+  border-radius: 3px;
+}
