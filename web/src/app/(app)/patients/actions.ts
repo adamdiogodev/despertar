@@ -32,7 +32,7 @@ const patientFields = {
   care_started_on: optionalDate,
 };
 
-const createSchema = z.object({ family_id: z.string().uuid("Selecione a família."), ...patientFields });
+const createSchema = z.object({ family_id: z.string().guid("Selecione a família."), ...patientFields });
 const updateSchema = z.object({
   id: z.string().guid(),
   status: z.enum(["active", "pending", "inactive"]),

@@ -25,8 +25,8 @@ function refresh(patientId: string) {
 // ---------------------------------------------------------------------------
 const addAssignmentSchema = z.object({
   patient_id: z.string().guid(),
-  therapist_id: z.string().uuid("Selecione o terapeuta."),
-  therapy_id: z.string().uuid("Selecione a terapia."),
+  therapist_id: z.string().guid("Selecione o terapeuta."),
+  therapy_id: z.string().guid("Selecione a terapia."),
   frequency: optionalText(80),
   starts_on: isoDate,
 });

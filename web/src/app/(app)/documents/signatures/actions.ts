@@ -27,8 +27,8 @@ export async function signDocument(_prev: ActionState, formData: FormData): Prom
 }
 
 const requestSchema = z.object({
-  documentId: z.string().uuid("Selecione o documento."),
-  signerId: z.string().uuid("Selecione o signatário."),
+  documentId: z.string().guid("Selecione o documento."),
+  signerId: z.string().guid("Selecione o signatário."),
   dueDate: z.iso.date("Data inválida.").optional().or(z.literal("").transform(() => undefined)),
 });
 

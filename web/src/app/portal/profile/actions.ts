@@ -31,7 +31,7 @@ export async function updateMyPhone(_prev: ActionState, formData: FormData): Pro
 }
 
 const dataUpdateSchema = z.object({
-  familyId: z.string().uuid("Escolha a família."),
+  familyId: z.string().guid("Escolha a família."),
   patientId: z.union([z.literal(""), z.string().guid()]),
   message: z.string().trim().min(5, "Conte o que precisa ser atualizado.").max(4000),
 });

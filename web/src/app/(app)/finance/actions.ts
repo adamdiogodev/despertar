@@ -9,7 +9,7 @@ import { parseMoneyToCents } from "@/lib/format";
 import { PAYMENT_METHODS } from "@/components/finance/logic";
 
 const chargeSchema = z.object({
-  family_id: z.string().uuid("Selecione a família."),
+  family_id: z.string().guid("Selecione a família."),
   reference: z.string().trim().min(3, "Informe a referência.").max(120),
   amount: z.string().trim().min(1, "Informe o valor."),
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe o vencimento."),

@@ -19,5 +19,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase.storage.from("files").createSignedUrl(path, 60, { download });
   if (error || !data) return NextResponse.json({ error: "Arquivo não encontrado ou sem permissão" }, { status: 404 });
 
+  await supabase.rpc("log_file_access", { path });
+
   return NextResponse.redirect(data.signedUrl);
 }

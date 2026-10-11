@@ -896,6 +896,9 @@ isOneToOne: false
 "local_date":
 { Args: { "ts": string }; Returns: string
                            },
+"log_file_access":
+{ Args: { "path": string }; Returns: undefined
+                           },
 "log_record_access":
 { Args: { "target_patient": string }; Returns: undefined
                            },
@@ -913,6 +916,9 @@ isOneToOne: false
                            },
 "notify_roles":
 { Args: { "notification_body"?: string,"notification_kind": string,"notification_link"?: string,"notification_title": string,"roles": (Database["public"]['Enums']["app_role"])[] }; Returns: undefined
+                           },
+"owns_file_path":
+{ Args: { "path": string }; Returns: boolean
                            },
 "patient_name":
 { Args: { "target_patient": string }; Returns: string

@@ -9,8 +9,8 @@ import { removeUserFile, uploadUserFile } from "@/lib/files";
 import { localDateKey } from "@/lib/format";
 
 const createSchema = z.object({
-  patientId: z.string().uuid("Selecione o paciente."),
-  therapistId: z.string().uuid("Selecione o terapeuta.").optional(),
+  patientId: z.string().guid("Selecione o paciente."),
+  therapistId: z.string().guid("Selecione o terapeuta.").optional(),
   reportType: z.enum(["evaluation", "quarterly", "semiannual", "school", "other"], { message: "Selecione o tipo." }),
   referenceLabel: z.string().trim().min(2, "Informe a referência.").max(80),
   dueDate: z.iso.date("Data inválida.").optional().or(z.literal("").transform(() => undefined)),

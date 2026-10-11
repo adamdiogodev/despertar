@@ -38,7 +38,7 @@ export async function signDocument(_prev: ActionState, formData: FormData): Prom
 const uploadSchema = z.object({
   title: z.string().trim().min(3, "Dê um nome ao documento.").max(150),
   category: z.enum(["medical", "other"], { message: "Escolha o tipo." }),
-  patientId: z.string().uuid("Escolha a criança."),
+  patientId: z.string().guid("Escolha a criança."),
 });
 
 export async function uploadFamilyDocument(_prev: ActionState, formData: FormData): Promise<ActionState> {

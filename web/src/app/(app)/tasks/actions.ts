@@ -11,7 +11,7 @@ const optionalUuid = z.union([z.literal(""), z.string().guid()]).transform((valu
 const taskSchema = z.object({
   title: z.string().trim().min(3, "Informe um título.").max(200),
   description: z.string().trim().max(4000).transform((value) => value || null),
-  assigned_to: z.string().uuid("Escolha o responsável."),
+  assigned_to: z.string().guid("Escolha o responsável."),
   priority: z.enum(["normal", "urgent"]),
   due_date: z.union([z.literal(""), z.iso.date()]).transform((value) => value || null),
   patient_id: optionalUuid,

@@ -38,7 +38,7 @@ function form(formData: FormData) {
 const notAllowed = failure("Você não tem permissão para alterar esta sessão.");
 
 const createSchema = z.object({
-  patient_id: z.string().uuid("Selecione o paciente"),
+  patient_id: z.string().guid("Selecione o paciente"),
   assignment: z.string().regex(/^[0-9a-f-]{36}:[0-9a-f-]{36}$/i, "Selecione terapeuta e terapia"),
   date: dateField,
   time: timeField,
