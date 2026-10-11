@@ -1,5 +1,6 @@
 "use client";
 
+import { FileInput } from "@/components/ui/file-input";
 import { useActionState } from "react";
 import { initialActionState, type ActionState } from "@/lib/action-state";
 import { Modal } from "@/components/ui/modal";
@@ -89,7 +90,7 @@ export function UploadDocumentForm({
         </Field>
       </div>
       <Field label="Arquivo" name="file" error={state.fieldErrors?.file} hint="PDF, imagem ou Word — até 20 MB.">
-        <Input type="file" name="file" accept={accept} required />
+        <FileInput name="file" accept={accept} required />
       </Field>
       <div className="flex justify-end">
         <SubmitButton pendingLabel="Enviando...">📤 Enviar à clínica</SubmitButton>

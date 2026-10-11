@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { attachmentKind, canRegisterSession, familyConfirmationMeta, fileHref, pickedFiles } from "./session-record-utils";
+import { attachmentKind, canRegisterSession, familyConfirmationMeta, fileHref } from "./session-record-utils";
 
 describe("familyConfirmationMeta", () => {
   it("is empty for sessions that are not completed", () => {
@@ -30,12 +30,6 @@ describe("fileHref", () => {
   });
 });
 
-describe("pickedFiles", () => {
-  it("drops strings and empty file inputs", () => {
-    const photo = new File(["x"], "a.jpg", { type: "image/jpeg" });
-    expect(pickedFiles(["text", new File([], ""), photo])).toEqual([photo]);
-  });
-});
 
 describe("canRegisterSession", () => {
   const now = new Date("2026-10-10T15:00:00Z");

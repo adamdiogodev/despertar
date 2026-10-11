@@ -1,12 +1,13 @@
 "use client";
 
+import { FileInput } from "@/components/ui/file-input";
 import { useActionState, useEffect } from "react";
 import { initialActionState } from "@/lib/action-state";
 import { saveSessionNote } from "@/app/(app)/patients/[id]/actions";
 import { Field, FormMessage, Input, Select, SubmitButton, Textarea, useResetOnSuccess } from "@/components/ui/form";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/primitives";
-import { MAX_SUBMISSION_BYTES, SESSION_MEDIA_ACCEPT } from "./session-record-utils";
+import { SESSION_MEDIA_ACCEPT } from "./session-record-utils";
 
 export type CompletedSessionOption = { id: string; label: string };
 
@@ -85,18 +86,9 @@ export function SessionNoteForm({
         label={note ? "Adicionar fotos ou anexos" : "Fotos e anexos"}
         name="attachments"
         error={errors.attachments}
-        hint="Fotos, vídeos ou PDF — até 20 MB no total por envio."
+        hint="Fotos, vídeos ou PDF — até 20 MB por arquivo."
       >
-        <Input
-          type="file"
-          name="attachments"
-          multiple
-          accept={SESSION_MEDIA_ACCEPT}
-          onChange={(event) => {
-            const total = [...(event.target.files ?? [])].reduce((sum, file) => sum + file.size, 0);
-            event.target.setCustomValidity(total > MAX_SUBMISSION_BYTES ? "Os anexos passam de 20 MB no total. Envie em partes." : "");
-          }}
-        />
+        <FileInput name="attachments" multiple accept={SESSION_MEDIA_ACCEPT} />
       </Field>
       <div className="flex justify-end">
         <SubmitButton pendingLabel="Enviando...">{note ? "Salvar registro" : fixedAppointment ? "Registrar sessão" : "Salvar registro"}</SubmitButton>

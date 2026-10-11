@@ -6,8 +6,7 @@ import { MANAGER_ROLES, requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { localDateKey } from "@/lib/format";
 import { type ActionState, failure, fromDb, fromZod, success } from "@/lib/action-state";
-import { removeUserFile, uploadUserFile } from "@/lib/files";
-import { MAX_SUBMISSION_BYTES, pickedFiles } from "@/components/patients/session-record-utils";
+import { removeUserFile, resolveUploads } from "@/lib/files";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida.");
 const optionalText = (max: number) =>
@@ -94,10 +93,8 @@ export async function saveSessionNote(_prev: ActionState, formData: FormData): P
   if (!parsed.success) return fromZod(parsed.error);
   const { id, patient_id, session_date, content } = parsed.data;
   const appointmentId = parsed.data.appointment_id || null;
-  const files = pickedFiles(formData.getAll("attachments"));
-  if (files.reduce((total, file) => total + file.size, 0) > MAX_SUBMISSION_BYTES) {
-    return failure("Os anexos passam de 20 MB no total. Envie em partes.", { attachments: ["Máximo de 20 MB por envio."] });
-  }
+  // Attachments were uploaded by the browser; resolve and validate them here.
+  const uploads = await resolveUploads(user.id, formData, "attachments");
 
   const supabase = await createClient();
 
@@ -136,23 +133,22 @@ export async function saveSessionNote(_prev: ActionState, formData: FormData): P
   }
 
   const failed: string[] = [];
-  for (const file of files) {
-    const upload = await uploadUserFile(user.id, file);
+  for (const upload of uploads) {
     if (!upload.ok) {
-      failed.push(`${file.name} (${upload.message})`);
+      failed.push(upload.message);
       continue;
     }
     const { error } = await supabase.from("session_attachments").insert({
       session_note_id: noteId,
       file_path: upload.path,
-      file_name: file.name.slice(0, 200),
+      file_name: upload.name,
       mime_type: upload.mimeType,
       size_bytes: upload.size,
       uploaded_by: user.id,
     });
     if (error) {
       await removeUserFile(upload.path);
-      failed.push(`${file.name} (${fromDb(error).message})`);
+      failed.push(`${upload.name} (${fromDb(error).message})`);
     }
   }
 

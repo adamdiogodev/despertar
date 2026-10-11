@@ -5,7 +5,7 @@ import { z } from "zod";
 import { requireRole, MANAGER_ROLES } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { failure, fromDb, fromZod, success, type ActionState } from "@/lib/action-state";
-import { removeUserFile, uploadUserFile } from "@/lib/files";
+import { removeUserFile, resolveUpload } from "@/lib/files";
 import { localDateKey } from "@/lib/format";
 
 function refreshReports() {
@@ -77,8 +77,7 @@ export async function submitReport(_prev: ActionState, formData: FormData): Prom
   if (!report || report.therapist_id !== user.id) return failure("Relatório não encontrado.");
   if (report.status !== "pending" && report.status !== "returned") return failure("Este relatório já foi enviado.");
 
-  const file = formData.get("file");
-  const upload = await uploadUserFile(user.id, file instanceof File ? file : null);
+  const upload = await resolveUpload(user.id, formData);
   if (!upload.ok) return failure(upload.message, { file: [upload.message] });
 
   const { error } = await supabase.from("reports").update({ file_path: upload.path, status: "in_review" }).eq("id", report.id);
@@ -156,8 +155,7 @@ export async function uploadReport(_prev: ActionState, formData: FormData): Prom
     .maybeSingle();
   if (!link) return failure("O terapeuta não tem vínculo vigente com este paciente.");
 
-  const file = formData.get("file");
-  const upload = await uploadUserFile(user.id, file instanceof File ? file : null);
+  const upload = await resolveUpload(user.id, formData);
   if (!upload.ok) return failure(upload.message, { file: [upload.message] });
 
   const { data: report, error } = await supabase

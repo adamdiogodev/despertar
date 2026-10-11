@@ -1,8 +1,9 @@
 "use client";
 
+import { FileInput } from "@/components/ui/file-input";
 import { useActionState, useEffect, type ReactNode } from "react";
 import { initialActionState, type ActionState } from "@/lib/action-state";
-import { Field, FormMessage, Input, SubmitButton } from "@/components/ui/form";
+import { Field, FormMessage, SubmitButton } from "@/components/ui/form";
 import { Modal } from "@/components/ui/modal";
 import { RECEIPT_ACCEPT } from "./logic";
 
@@ -45,7 +46,7 @@ function ReceiptForm({ action, fields, submitLabel, description, fileRequired = 
         name="file"
         error={state.fieldErrors?.file}
       >
-        <Input name="file" type="file" required={fileRequired} accept={RECEIPT_ACCEPT} />
+        <FileInput name="file" required={fileRequired} accept={RECEIPT_ACCEPT} />
       </Field>
       <div className="flex justify-end">
         <SubmitButton pendingLabel="Enviando..." data-testid={testId ? `${testId}-submit` : undefined}>

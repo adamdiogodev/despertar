@@ -1,5 +1,6 @@
 "use client";
 
+import { FileInput } from "@/components/ui/file-input";
 import { useActionState, useEffect, useState } from "react";
 import { initialActionState, type ActionState } from "@/lib/action-state";
 import { Field, FormMessage, Input, Select, SubmitButton, Textarea } from "@/components/ui/form";
@@ -136,7 +137,7 @@ function UploadReportForm({ action, patient, chooseTherapist, accept, close }: {
         <Input name="referenceLabel" placeholder="Ex.: 2º Sem. 2026" required maxLength={80} />
       </Field>
       <Field label="Arquivo do relatório" name="file" error={state.fieldErrors?.file} hint="PDF, Word ou imagem — até 20 MB. Vai para revisão da coordenação.">
-        <Input name="file" type="file" accept={accept} required />
+        <FileInput name="file" accept={accept} required />
       </Field>
       <div className="flex justify-end">
         <SubmitButton pendingLabel="Enviando...">Enviar para revisão</SubmitButton>
@@ -161,7 +162,7 @@ function SubmitReportForm({ action, reportId, accept, close }: { action: Action;
       <FormMessage state={state} />
       <input type="hidden" name="reportId" value={reportId} />
       <Field label="Arquivo do relatório" name="file" error={state.fieldErrors?.file} hint="PDF, Word ou imagem — até 20 MB.">
-        <Input name="file" type="file" accept={accept} required />
+        <FileInput name="file" accept={accept} required />
       </Field>
       <div className="flex justify-end">
         <SubmitButton pendingLabel="Enviando...">Enviar para revisão</SubmitButton>

@@ -31,12 +31,6 @@ export function fileHref(path: string, download = false): string {
 }
 
 export const SESSION_MEDIA_ACCEPT = ".jpg,.jpeg,.png,.webp,.heic,.mp4,.mov,.pdf";
-export const MAX_SUBMISSION_BYTES = 20 * 1024 * 1024;
-
-// Files picked in one submission; empty inputs arrive as a zero-byte File.
-export function pickedFiles(values: FormDataEntryValue[]): File[] {
-  return values.filter((value): value is File => typeof value !== "string" && value.size > 0);
-}
 
 // A record can be written by the session's own therapist once the session started.
 export function canRegisterSession(

@@ -1,45 +1,39 @@
 import "server-only";
-import { randomUUID } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
+import { ALLOWED_MIME_TYPES, MAX_FILE_BYTES, parseUploadReference } from "@/lib/upload-rules";
 
-export const MAX_FILE_BYTES = 20 * 1024 * 1024;
-export const ALLOWED_MIME_TYPES = [
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "video/mp4",
-  "video/quicktime",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/xml",
-  "text/xml",
-];
-export const ACCEPT_ATTRIBUTE = ".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xml";
+export const ACCEPT_ATTRIBUTE = ".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.xml";
 
-export function safeFileName(name: string) {
-  const base = name.normalize("NFD").replace(/[̀-ͯ]/g, "");
-  return base.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(-120) || "arquivo";
+export type UploadResult =
+  | { ok: true; path: string; name: string; size: number; mimeType: string }
+  | { ok: false; message: string };
+
+// Files are uploaded by the browser (<FileInput>) straight to storage. Here we
+// only trust what storage itself reports about the object: it must exist in the
+// caller's folder, and its real size/type must be within the rules.
+async function resolveReference(userId: string, value: FormDataEntryValue | null): Promise<UploadResult> {
+  const reference = parseUploadReference(value, userId);
+  if (!reference) return { ok: false, message: "Selecione um arquivo." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage.from("files").info(reference.path);
+  if (error || !data) return { ok: false, message: "Arquivo não encontrado. Envie novamente." };
+
+  const size = data.size ?? 0;
+  const mimeType = data.contentType ?? "";
+  if (size > MAX_FILE_BYTES || !ALLOWED_MIME_TYPES.includes(mimeType)) {
+    await removeUserFile(reference.path);
+    return { ok: false, message: "Arquivo inválido (tamanho ou tipo)." };
+  }
+  return { ok: true, path: reference.path, name: reference.name, size, mimeType };
 }
 
-export type UploadResult = { ok: true; path: string; size: number; mimeType: string } | { ok: false; message: string };
+export async function resolveUpload(userId: string, formData: FormData, field = "file"): Promise<UploadResult> {
+  return resolveReference(userId, formData.get(field));
+}
 
-// Uploads into the private "files" bucket under the uploader's own folder, as
-// the signed-in user (storage RLS only allows writing to <uid>/...).
-export async function uploadUserFile(userId: string, file: File | null): Promise<UploadResult> {
-  if (!file || file.size === 0) return { ok: false, message: "Selecione um arquivo." };
-  if (file.size > MAX_FILE_BYTES) return { ok: false, message: "Arquivo maior que 20 MB." };
-  if (!ALLOWED_MIME_TYPES.includes(file.type)) return { ok: false, message: "Tipo de arquivo não permitido. Use PDF, imagem, vídeo, Word ou XML." };
-
-  const path = `${userId}/${randomUUID()}-${safeFileName(file.name)}`;
-  const supabase = await createClient();
-  const { error } = await supabase.storage.from("files").upload(path, file, { contentType: file.type, upsert: false });
-  if (error) {
-    console.error("[storage]", error);
-    return { ok: false, message: "Falha ao enviar o arquivo." };
-  }
-  return { ok: true, path, size: file.size, mimeType: file.type };
+export async function resolveUploads(userId: string, formData: FormData, field: string): Promise<UploadResult[]> {
+  return Promise.all(formData.getAll(field).map((value) => resolveReference(userId, value)));
 }
 
 export async function removeUserFile(path: string) {

@@ -6,7 +6,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { failure, fromDb, fromZod, success, type ActionState } from "@/lib/action-state";
 import { formatCents, parseMoneyToCents } from "@/lib/format";
-import { removeUserFile, uploadUserFile } from "@/lib/files";
+import { removeUserFile, resolveUpload } from "@/lib/files";
 import { receiptFileError } from "@/components/finance/logic";
 
 // Only the admin writes payout periods and reviews invoices (RLS and RPCs agree).
@@ -103,9 +103,20 @@ export async function rejectInvoice(_prev: ActionState, formData: FormData): Pro
   return success("Nota recusada; o profissional foi avisado.");
 }
 
-function receiptFile(formData: FormData): File | null {
-  const file = formData.get("file");
-  return file instanceof File && file.size > 0 ? file : null;
+function hasReceipt(formData: FormData): boolean {
+  return typeof formData.get("file") === "string";
+}
+
+// Resolves the browser-uploaded receipt and checks it is a PDF or image.
+async function resolveReceipt(userId: string, formData: FormData) {
+  const upload = await resolveUpload(userId, formData);
+  if (!upload.ok) return upload;
+  const invalid = receiptFileError({ type: upload.mimeType, size: upload.size });
+  if (invalid) {
+    await removeUserFile(upload.path);
+    return { ok: false as const, message: invalid };
+  }
+  return upload;
 }
 
 // Marks an approved invoice as paid, optionally with the transfer receipt.
@@ -114,12 +125,9 @@ export async function payInvoice(_prev: ActionState, formData: FormData): Promis
   const parsed = requestSchema.safeParse({ id: formData.get("id") });
   if (!parsed.success) return failure("Solicitação inválida.");
 
-  const file = receiptFile(formData);
   let receiptPath: string | undefined;
-  if (file) {
-    const invalid = receiptFileError(file);
-    if (invalid) return failure("Verifique os campos destacados.", { file: [invalid] });
-    const upload = await uploadUserFile(user.id, file);
+  if (hasReceipt(formData)) {
+    const upload = await resolveReceipt(user.id, formData);
     if (!upload.ok) return failure(upload.message, { file: [upload.message] });
     receiptPath = upload.path;
   }
@@ -139,10 +147,7 @@ export async function attachPayoutReceipt(_prev: ActionState, formData: FormData
   const parsed = requestSchema.safeParse({ id: formData.get("id") });
   if (!parsed.success) return failure("Solicitação inválida.");
 
-  const file = receiptFile(formData);
-  const invalid = receiptFileError(file);
-  if (invalid || !file) return failure("Verifique os campos destacados.", { file: [invalid ?? "Anexe o comprovante."] });
-  const upload = await uploadUserFile(user.id, file);
+  const upload = await resolveReceipt(user.id, formData);
   if (!upload.ok) return failure(upload.message, { file: [upload.message] });
 
   const supabase = await createClient();

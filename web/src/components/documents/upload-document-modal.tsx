@@ -1,5 +1,6 @@
 "use client";
 
+import { FileInput } from "@/components/ui/file-input";
 import { useActionState, useEffect } from "react";
 import { initialActionState, type ActionState } from "@/lib/action-state";
 import { Field, FormMessage, Input, Select, SubmitButton } from "@/components/ui/form";
@@ -75,7 +76,7 @@ function UploadForm({
         Visível para a família no portal
       </label>
       <Field label="Arquivo" name="file" error={state.fieldErrors?.file} hint="PDF, imagem, Word ou XML — até 20 MB.">
-        <Input name="file" type="file" accept={accept} required />
+        <FileInput name="file" accept={accept} required />
       </Field>
       <div className="flex justify-end">
         <SubmitButton pendingLabel="Enviando...">Enviar</SubmitButton>

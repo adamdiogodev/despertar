@@ -36,9 +36,9 @@ const nextConfig: NextConfig = {
     },
   },
   experimental: {
-    // Uploads (documents, reports, invoices) are capped at 20 MB in the storage bucket.
-    serverActions: { bodySizeLimit: "21mb" },
-    proxyClientMaxBodySize: "21mb",
+    // Files go straight from the browser to Supabase Storage (<FileInput>), never through actions.
+    serverActions: { bodySizeLimit: "2mb" },
+    proxyClientMaxBodySize: "2mb",
   },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

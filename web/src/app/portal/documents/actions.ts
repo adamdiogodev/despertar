@@ -6,7 +6,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { failure, fromDb, fromZod, success, type ActionState } from "@/lib/action-state";
-import { removeUserFile, uploadUserFile } from "@/lib/files";
+import { removeUserFile, resolveUpload } from "@/lib/files";
 
 const signSchema = z.object({
   requestId: z.string().guid(),
@@ -55,8 +55,7 @@ export async function uploadFamilyDocument(_prev: ActionState, formData: FormDat
   const { data: patient } = await supabase.from("patients").select("id, family_id").eq("id", parsed.data.patientId).maybeSingle();
   if (!patient) return failure("Criança não encontrada.", { patientId: ["Escolha a criança."] });
 
-  const file = formData.get("file");
-  const upload = await uploadUserFile(user.id, file instanceof File ? file : null);
+  const upload = await resolveUpload(user.id, formData);
   if (!upload.ok) return failure(upload.message, { file: [upload.message] });
 
   const { error } = await supabase.from("documents").insert({

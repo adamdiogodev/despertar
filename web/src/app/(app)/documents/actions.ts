@@ -5,7 +5,7 @@ import { z } from "zod";
 import { requireRole, MANAGER_ROLES } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { failure, fromDb, fromZod, success, type ActionState } from "@/lib/action-state";
-import { removeUserFile, uploadUserFile } from "@/lib/files";
+import { removeUserFile, resolveUpload } from "@/lib/files";
 
 const uploadSchema = z.object({
   title: z.string().trim().min(2, "Informe o título.").max(160),
@@ -44,8 +44,7 @@ export async function uploadDocument(_prev: ActionState, formData: FormData): Pr
     if (!data) return failure("Paciente não encontrado.");
   }
 
-  const file = formData.get("file");
-  const upload = await uploadUserFile(user.id, file instanceof File ? file : null);
+  const upload = await resolveUpload(user.id, formData);
   if (!upload.ok) return failure(upload.message, { file: [upload.message] });
 
   const { error } = await supabase.from("documents").insert({
