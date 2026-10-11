@@ -25,6 +25,8 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
+      # PageProps/LayoutProps are generated into .next/types (gitignored).
+      - run: npx next typegen
       - run: npx tsc --noEmit
       - run: npx eslint src
       - run: npx vitest run
