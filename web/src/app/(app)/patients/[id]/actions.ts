@@ -6,6 +6,8 @@ import { MANAGER_ROLES, requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { localDateKey } from "@/lib/format";
 import { type ActionState, failure, fromDb, fromZod, success } from "@/lib/action-state";
+import { removeUserFile, uploadUserFile } from "@/lib/files";
+import { MAX_SUBMISSION_BYTES, pickedFiles } from "@/components/patients/session-record-utils";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida.");
 const optionalText = (max: number) =>
@@ -75,26 +77,31 @@ export async function endCareAssignment(_prev: ActionState, formData: FormData):
 }
 
 // ---------------------------------------------------------------------------
-// Session notes (therapists linked to the patient; RLS enforces it)
+// Session records (therapists linked to the patient; RLS enforces it). Shared
+// with the family; registering a started session marks it as completed.
 // ---------------------------------------------------------------------------
 const noteSchema = z.object({
   id: z.union([z.string().guid(), z.literal("")]).optional(),
   patient_id: z.string().guid(),
   session_date: isoDate,
   appointment_id: z.union([z.string().guid(), z.literal("")]).optional(),
-  content: z.string().trim().min(3, "Escreva a evolução.").max(20000),
+  content: z.string().trim().min(3, "Escreva o registro da sessão.").max(20000),
 });
 
 export async function saveSessionNote(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requireRole(["therapist"]);
-  const parsed = noteSchema.safeParse(Object.fromEntries(formData));
+  const parsed = noteSchema.safeParse(Object.fromEntries([...formData.entries()].filter(([key]) => key !== "attachments")));
   if (!parsed.success) return fromZod(parsed.error);
   const { id, patient_id, session_date, content } = parsed.data;
   const appointmentId = parsed.data.appointment_id || null;
+  const files = pickedFiles(formData.getAll("attachments"));
+  if (files.reduce((total, file) => total + file.size, 0) > MAX_SUBMISSION_BYTES) {
+    return failure("Os anexos passam de 20 MB no total. Envie em partes.", { attachments: ["Máximo de 20 MB por envio."] });
+  }
 
   const supabase = await createClient();
 
-  // The note may only point to a completed session of this therapist with this patient.
+  // Own session of this patient that already started (the database re-checks it).
   if (appointmentId) {
     const { data: appointment } = await supabase
       .from("appointments")
@@ -102,33 +109,64 @@ export async function saveSessionNote(_prev: ActionState, formData: FormData): P
       .eq("id", appointmentId)
       .eq("patient_id", patient_id)
       .eq("therapist_id", user.id)
-      .eq("status", "completed")
+      .in("status", ["scheduled", "confirmed", "completed"])
+      .lte("starts_at", new Date().toISOString())
       .maybeSingle();
-    if (!appointment) return failure("Selecione uma sessão concluída sua com este paciente.");
+    if (!appointment) return failure("Selecione uma sessão sua com este paciente que já começou.");
   }
 
-  if (id) {
+  let noteId = id || null;
+  if (noteId) {
     const { data, error } = await supabase
       .from("session_notes")
       .update({ content, session_date, appointment_id: appointmentId })
-      .eq("id", id)
+      .eq("id", noteId)
       .eq("therapist_id", user.id)
       .select("id");
     if (error) return noteError(error);
-    if (!data?.length) return failure("Você só pode editar as próprias evoluções.");
+    if (!data?.length) return failure("Você só pode editar os próprios registros.");
   } else {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("session_notes")
-      .insert({ patient_id, therapist_id: user.id, session_date, content, appointment_id: appointmentId });
+      .insert({ patient_id, therapist_id: user.id, session_date, content, appointment_id: appointmentId })
+      .select("id")
+      .single();
     if (error) return noteError(error);
+    noteId = data.id;
+  }
+
+  const failed: string[] = [];
+  for (const file of files) {
+    const upload = await uploadUserFile(user.id, file);
+    if (!upload.ok) {
+      failed.push(`${file.name} (${upload.message})`);
+      continue;
+    }
+    const { error } = await supabase.from("session_attachments").insert({
+      session_note_id: noteId,
+      file_path: upload.path,
+      file_name: file.name.slice(0, 200),
+      mime_type: upload.mimeType,
+      size_bytes: upload.size,
+      uploaded_by: user.id,
+    });
+    if (error) {
+      await removeUserFile(upload.path);
+      failed.push(`${file.name} (${fromDb(error).message})`);
+    }
   }
 
   refresh(patient_id);
-  return success(id ? "Evolução atualizada." : "Evolução registrada.");
+  revalidatePath("/schedule");
+  revalidatePath("/portal/sessions");
+  revalidatePath("/portal");
+  const saved = id ? "Registro atualizado." : appointmentId ? "Sessão registrada e concluída. A família foi avisada." : "Registro salvo.";
+  // The record itself is saved, so the form resets; the message lists what to resend.
+  return success(failed.length ? `${saved} Anexos não enviados: ${failed.join("; ")}` : saved);
 }
 
 function noteError(error: { message: string; code?: string }) {
-  if (error.code === "23505") return failure("Esta sessão já tem uma evolução registrada.");
+  if (error.code === "23505") return failure("Esta sessão já tem um registro.");
   return fromDb(error);
 }
 

@@ -21,7 +21,7 @@ export default async function PortalHomePage({ searchParams }: PageProps<"/porta
   const nowIso = new Date().toISOString();
   const today = localDateKey(new Date());
 
-  const [nextSession, signatures, participations, charges, announcements, guidance] = await Promise.all([
+  const [nextSession, signatures, participations, charges, announcements, guidance, awaitingConfirmation] = await Promise.all([
     supabase
       .from("appointments")
       .select("id, starts_at, rooms(name), therapies(name), therapists(profiles(full_name)), patients(full_name)")
@@ -41,7 +41,14 @@ export default async function PortalHomePage({ searchParams }: PageProps<"/porta
         return { patientId, items: data ?? [] };
       }),
     ),
+    supabase
+      .from("appointments")
+      .select("id", { count: "exact", head: true })
+      .in("patient_id", patientIds)
+      .eq("status", "completed")
+      .is("family_confirmation", null),
   ]);
+  const awaitingCount = awaitingConfirmation.count ?? 0;
 
   const unread = (participations.data ?? []).filter((p) => {
     const last = p.conversations?.last_message_at;
@@ -73,6 +80,23 @@ export default async function PortalHomePage({ searchParams }: PageProps<"/porta
       </div>
 
       <ChildSwitcher items={children} selectedId={selectedId} basePath="/portal" />
+
+      {awaitingCount > 0 && (
+        <Link
+          href={`${link("/portal/sessions")}#pending-confirmation`}
+          className="mb-6 flex flex-wrap items-center gap-3 rounded-card border border-warn bg-warn-bg px-5 py-4 shadow-card transition hover:brightness-95"
+          data-testid="awaiting-confirmation-card"
+        >
+          <span className="text-2xl">✋</span>
+          <div className="min-w-0 flex-1">
+            <div className="font-bold text-t1">
+              {awaitingCount} {awaitingCount === 1 ? "sessão aguardando" : "sessões aguardando"} seu de acordo
+            </div>
+            <div className="text-sm text-t2">Veja o registro do terapeuta e confirme se a sessão foi realizada.</div>
+          </div>
+          <span className="text-sm font-semibold text-primary">Responder →</span>
+        </Link>
+      )}
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard

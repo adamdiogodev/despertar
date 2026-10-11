@@ -8,6 +8,9 @@ export const ALLOWED_MIME_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
+  "image/heic",
+  "video/mp4",
+  "video/quicktime",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/xml",
@@ -27,7 +30,7 @@ export type UploadResult = { ok: true; path: string; size: number; mimeType: str
 export async function uploadUserFile(userId: string, file: File | null): Promise<UploadResult> {
   if (!file || file.size === 0) return { ok: false, message: "Selecione um arquivo." };
   if (file.size > MAX_FILE_BYTES) return { ok: false, message: "Arquivo maior que 20 MB." };
-  if (!ALLOWED_MIME_TYPES.includes(file.type)) return { ok: false, message: "Tipo de arquivo não permitido. Use PDF, imagem, Word ou XML." };
+  if (!ALLOWED_MIME_TYPES.includes(file.type)) return { ok: false, message: "Tipo de arquivo não permitido. Use PDF, imagem, vídeo, Word ou XML." };
 
   const path = `${userId}/${randomUUID()}-${safeFileName(file.name)}`;
   const supabase = await createClient();

@@ -65,6 +65,7 @@ export async function uploadDocument(_prev: ActionState, formData: FormData): Pr
     return fromDb(error);
   }
   revalidatePath("/documents");
+  if (kind === "patient") revalidatePath(`/patients/${targetId}`);
   return success("Documento enviado.");
 }
 

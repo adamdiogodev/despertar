@@ -46,7 +46,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/documents", label: "Documentos", icon: "documents", roles: ["admin", "coordination", "therapist"] },
       { href: "/reports", label: "Relatórios", icon: "reports", roles: ["admin", "coordination", "therapist"] },
       { href: "/tasks", label: "Tarefas", icon: "tasks", roles: ["admin", "coordination", "reception", "therapist"] },
-      { href: "/invoices", label: "Minhas Notas Fiscais", icon: "invoices", roles: ["therapist"] },
+      { href: "/invoices", label: "Minhas Notas Fiscais", icon: "invoices", roles: ["coordination", "reception", "therapist"] },
     ],
   },
   {

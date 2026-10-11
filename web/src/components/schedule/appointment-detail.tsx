@@ -14,6 +14,7 @@ import {
   setAppointmentStatus,
   updateAppointment,
 } from "@/app/(app)/schedule/actions";
+import { familyConfirmationMeta } from "@/components/patients/session-record-utils";
 import { OPEN_STATUSES, STATUS_META, type Option, type ScheduleAppointment, type ScheduleViewer } from "./types";
 
 type Mode = "view" | "edit" | "complete" | "cancel";
@@ -36,6 +37,19 @@ export function AppointmentDetail({
   );
 }
 
+// Row button used outside the weekly grid (e.g. the patient's agenda tab).
+export function AppointmentDetailButton({ appointment, viewer, rooms }: { appointment: ScheduleAppointment; viewer: ScheduleViewer; rooms: Option[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" className={buttonClass("ghost", "sm")} onClick={() => setOpen(true)} data-testid="appointment-detail-open">
+        Detalhes
+      </button>
+      <AppointmentDetail appointment={open ? appointment : null} viewer={viewer} rooms={rooms} onClose={() => setOpen(false)} />
+    </>
+  );
+}
+
 function DetailBody({ appointment, viewer, rooms }: { appointment: ScheduleAppointment; viewer: ScheduleViewer; rooms: Option[] }) {
   const [mode, setMode] = useState<Mode>("view");
   const isOwnSession = appointment.therapistId === viewer.userId;
@@ -43,6 +57,7 @@ function DetailBody({ appointment, viewer, rooms }: { appointment: ScheduleAppoi
   const isOpen = OPEN_STATUSES.includes(appointment.status);
   const minutes = durationMinutes(appointment.startsAt, appointment.endsAt);
   const back = () => setMode("view");
+  const confirmation = familyConfirmationMeta(appointment.status, appointment.familyConfirmation, appointment.familyConfirmationNote);
 
   return (
     <div data-testid="appointment-detail">
@@ -63,6 +78,11 @@ function DetailBody({ appointment, viewer, rooms }: { appointment: ScheduleAppoi
         <Badge tone={STATUS_META[appointment.status].tone}>{STATUS_META[appointment.status].label}</Badge>
       </InfoRow>
       {appointment.cancelReason && appointment.status === "canceled" && <InfoRow label="Motivo do cancelamento">{appointment.cancelReason}</InfoRow>}
+      {confirmation && (
+        <InfoRow label="Família">
+          <Badge tone={confirmation.tone}>{confirmation.label}</Badge>
+        </InfoRow>
+      )}
       <InfoRow label="Observações">{appointment.notes || "—"}</InfoRow>
 
       <div className="mt-5">
@@ -85,11 +105,9 @@ function DetailBody({ appointment, viewer, rooms }: { appointment: ScheduleAppoi
                 Cancelar sessão
               </button>
             )}
-            {isOwnSession && (
-              <LinkButton href={`/patients/${appointment.patientId}?tab=record`} variant="outline" size="sm">
-                Registrar evolução
-              </LinkButton>
-            )}
+            <LinkButton href={`/patients/${appointment.patientId}?tab=sessions#session-${appointment.id}`} variant="outline" size="sm">
+              Ver/registrar sessão
+            </LinkButton>
           </div>
         )}
         {mode === "complete" && <CompleteForm id={appointment.id} defaultMinutes={minutes} onBack={back} />}

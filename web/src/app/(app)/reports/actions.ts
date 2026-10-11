@@ -8,6 +8,11 @@ import { failure, fromDb, fromZod, success, type ActionState } from "@/lib/actio
 import { removeUserFile, uploadUserFile } from "@/lib/files";
 import { localDateKey } from "@/lib/format";
 
+function refreshReports() {
+  revalidatePath("/reports");
+  revalidatePath("/patients/[id]", "page");
+}
+
 const createSchema = z.object({
   patientId: z.string().guid("Selecione o paciente."),
   therapistId: z.string().guid("Selecione o terapeuta.").optional(),
@@ -51,7 +56,7 @@ export async function createReport(_prev: ActionState, formData: FormData): Prom
     due_date: dueDate ?? null,
   });
   if (error) return fromDb(error);
-  revalidatePath("/reports");
+  refreshReports();
   return success(user.role === "therapist" ? "Relatório criado." : "Relatório solicitado. O terapeuta foi notificado.");
 }
 
@@ -83,7 +88,7 @@ export async function submitReport(_prev: ActionState, formData: FormData): Prom
   }
   // The previous version (after a return) is replaced by the new upload.
   if (report.file_path && report.file_path.startsWith(`${user.id}/`)) await removeUserFile(report.file_path);
-  revalidatePath("/reports");
+  refreshReports();
   return success("Relatório enviado para revisão.");
 }
 
@@ -96,7 +101,7 @@ export async function approveReport(_prev: ActionState, formData: FormData): Pro
   const { data, error } = await supabase.from("reports").update({ status: "approved" }).eq("id", id.data).select("id");
   if (error) return fromDb(error);
   if (!data?.length) return failure("Relatório não encontrado.");
-  revalidatePath("/reports");
+  refreshReports();
   return success("Relatório aprovado. A família foi notificada.");
 }
 
@@ -118,6 +123,54 @@ export async function returnReport(_prev: ActionState, formData: FormData): Prom
     .select("id");
   if (error) return fromDb(error);
   if (!data?.length) return failure("Relatório não encontrado.");
-  revalidatePath("/reports");
+  refreshReports();
   return success("Relatório devolvido. O terapeuta foi notificado.");
+}
+
+const uploadSchema = createSchema.omit({ dueDate: true });
+
+// Creates the report already with its file and sends it to review in one step.
+// Linked therapists upload their own; managers may upload on behalf of one.
+export async function uploadReport(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireRole(["admin", "coordination", "therapist"]);
+  const parsed = uploadSchema.safeParse({
+    patientId: formData.get("patientId"),
+    therapistId: user.role === "therapist" ? user.id : formData.get("therapistId") || undefined,
+    reportType: formData.get("reportType"),
+    referenceLabel: formData.get("referenceLabel"),
+  });
+  if (!parsed.success) return fromZod(parsed.error);
+  const { patientId, therapistId, reportType, referenceLabel } = parsed.data;
+  if (!therapistId) return failure("Selecione o terapeuta.", { therapistId: ["Selecione o terapeuta."] });
+
+  const supabase = await createClient();
+  const today = localDateKey(new Date());
+  const { data: link } = await supabase
+    .from("care_assignments")
+    .select("id")
+    .eq("patient_id", patientId)
+    .eq("therapist_id", therapistId)
+    .lte("starts_on", today)
+    .or(`ends_on.is.null,ends_on.gte.${today}`)
+    .limit(1)
+    .maybeSingle();
+  if (!link) return failure("O terapeuta não tem vínculo vigente com este paciente.");
+
+  const file = formData.get("file");
+  const upload = await uploadUserFile(user.id, file instanceof File ? file : null);
+  if (!upload.ok) return failure(upload.message, { file: [upload.message] });
+
+  const { data: report, error } = await supabase
+    .from("reports")
+    .insert({ patient_id: patientId, therapist_id: therapistId, report_type: reportType, reference_label: referenceLabel, file_path: upload.path })
+    .select("id")
+    .single();
+  if (error) {
+    await removeUserFile(upload.path);
+    return fromDb(error);
+  }
+  const { error: submitError } = await supabase.from("reports").update({ status: "in_review" }).eq("id", report.id);
+  refreshReports();
+  if (submitError) return failure(`Relatório criado com o arquivo, mas não foi enviado para revisão: ${fromDb(submitError).message}`);
+  return success("Relatório enviado para revisão da coordenação.");
 }

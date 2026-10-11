@@ -27,13 +27,13 @@ export async function FamilyList({ q, status, selectedId }: { q: string; status:
 
   return (
     <div>
-      <form className="mb-4 flex gap-2" role="search">
+      <form className="mb-4 flex flex-wrap gap-2" role="search">
         <input
           name="q"
           defaultValue={q}
           placeholder="Buscar família..."
           aria-label="Buscar família"
-          className="min-w-0 flex-1 rounded-lg border-[1.5px] border-line bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+          className="min-w-[10rem] flex-1 basis-full rounded-lg border-[1.5px] sm:basis-auto border-line bg-white px-3 py-2 text-sm outline-none focus:border-primary"
           data-testid="family-search"
         />
         <select

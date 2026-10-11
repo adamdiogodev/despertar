@@ -29,6 +29,8 @@ const durationField = z.coerce.number().int().min(10, "Mínimo de 10 minutos").m
 function revalidateSchedule() {
   revalidatePath("/schedule");
   revalidatePath("/schedule/requests");
+  revalidatePath("/patients/[id]", "page");
+  revalidatePath("/portal/sessions");
 }
 
 function form(formData: FormData) {

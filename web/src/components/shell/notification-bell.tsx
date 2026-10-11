@@ -32,6 +32,7 @@ const KIND_ICONS: Record<string, string> = {
   announcement: "📢",
   request: "📨",
   assignment: "🤝",
+  session_record: "📝",
 };
 
 export function NotificationBell({ userId, initial, allHref }: { userId: string; initial: NotificationItem[]; allHref: string }) {

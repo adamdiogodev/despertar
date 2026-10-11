@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { MANAGER_ROLES, requireRole } from "@/lib/auth";
 import { formatCents, formatDate } from "@/lib/format";
-import { Card, EmptyState, LinkButton, PageHeader, Table, Td, Th, buttonClass } from "@/components/ui/primitives";
+import { Card, EmptyState, PageHeader, buttonClass } from "@/components/ui/primitives";
+import { FinanceTabs, ProfessionalsSubnav } from "@/components/finance/finance-tabs";
+import { RTable, RTd, RTh } from "@/components/finance/responsive-table";
 import { loadTherapyReport, reportRange } from "@/components/finance/therapy-report";
 
 export default async function TherapyReportPage({ searchParams }: PageProps<"/finance/reports">) {
@@ -23,24 +25,21 @@ export default async function TherapyReportPage({ searchParams }: PageProps<"/fi
   const exportHref = `/finance/reports/export?${new URLSearchParams({ from, to }).toString()}`;
 
   return (
-    <div>
+    <div className="min-w-0">
       <PageHeader
-        title="Relatório de terapias"
-        description={`Sessões por terapeuta e terapia · ${formatDate(from)} a ${formatDate(to)}`}
+        title="Financeiro"
+        description={`Relatório de terapias · sessões por terapeuta e terapia · ${formatDate(from)} a ${formatDate(to)}`}
         actions={
-          <>
-            <LinkButton href="/finance" variant="ghost" size="sm">
-              ← Financeiro
-            </LinkButton>
-            <a href={exportHref} className={buttonClass("outline", "sm")} data-testid="report-export">
-              ↓ Exportar CSV
-            </a>
-          </>
+          <a href={exportHref} className={buttonClass("outline", "sm")} data-testid="report-export">
+            ↓ Exportar CSV
+          </a>
         }
       />
+      <FinanceTabs active="professionals" />
+      <ProfessionalsSubnav active="reports" />
 
-      <Card className="p-0">
-        <form className="flex flex-wrap items-end gap-3 border-b border-line px-5 py-4" action="/finance/reports">
+      <Card className="min-w-0 p-0">
+        <form className="flex flex-wrap items-end gap-3 border-b border-line px-4 py-4 sm:px-5" action="/finance/reports">
           <label className="text-xs font-semibold text-t2">
             De
             <input type="date" name="from" defaultValue={from} className="mt-1 block rounded-lg border-[1.5px] border-line px-2 py-1 text-sm" />
@@ -54,48 +53,48 @@ export default async function TherapyReportPage({ searchParams }: PageProps<"/fi
         {rows.length === 0 ? (
           <EmptyState title="Sem sessões no período" description="Nenhuma sessão concluída, falta ou cancelamento entre as datas escolhidas." />
         ) : (
-          <Table>
+          <RTable>
             <thead>
               <tr>
-                <Th>Terapeuta</Th>
-                <Th>Terapia</Th>
-                <Th>Concluídas</Th>
-                <Th>Faltas</Th>
-                <Th>Canceladas</Th>
-                <Th>Minutos realizados</Th>
-                <Th>Valor estimado a repassar</Th>
+                <RTh>Terapeuta</RTh>
+                <RTh>Terapia</RTh>
+                <RTh>Concluídas</RTh>
+                <RTh>Faltas</RTh>
+                <RTh>Canceladas</RTh>
+                <RTh>Minutos realizados</RTh>
+                <RTh>Valor estimado a repassar</RTh>
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => (
                 <tr key={`${row.therapistId}-${row.therapyId}`} data-testid="report-row">
-                  <Td className="font-semibold text-t1">{row.therapistName}</Td>
-                  <Td>{row.therapyName}</Td>
-                  <Td>{row.completed}</Td>
-                  <Td>{row.noShow}</Td>
-                  <Td>{row.canceled}</Td>
-                  <Td>{row.completedMinutes}</Td>
-                  <Td className="font-bold text-t1">
+                  <RTd className="font-semibold text-t1">{row.therapistName}</RTd>
+                  <RTd label="Terapia">{row.therapyName}</RTd>
+                  <RTd label="Concluídas">{row.completed}</RTd>
+                  <RTd label="Faltas">{row.noShow}</RTd>
+                  <RTd label="Canceladas">{row.canceled}</RTd>
+                  <RTd label="Minutos">{row.completedMinutes}</RTd>
+                  <RTd label="A repassar" className="font-bold text-t1">
                     {formatCents(row.estimatedCents)}
                     {row.missingRate && (
                       <Link href={`/therapists/${row.therapistId}`} className="ml-2 text-xs font-semibold text-danger underline">
                         sem valor cadastrado
                       </Link>
                     )}
-                  </Td>
+                  </RTd>
                 </tr>
               ))}
               <tr className="bg-line-light">
-                <Td className="font-bold text-t1">Total</Td>
-                <Td />
-                <Td className="font-bold">{totals.completed}</Td>
-                <Td className="font-bold">{totals.noShow}</Td>
-                <Td className="font-bold">{totals.canceled}</Td>
-                <Td className="font-bold">{totals.minutes}</Td>
-                <Td className="font-bold text-t1">{formatCents(totals.cents)}</Td>
+                <RTd className="font-bold text-t1">Total</RTd>
+                <RTd className="max-md:hidden" />
+                <RTd label="Concluídas" className="font-bold">{totals.completed}</RTd>
+                <RTd label="Faltas" className="font-bold">{totals.noShow}</RTd>
+                <RTd label="Canceladas" className="font-bold">{totals.canceled}</RTd>
+                <RTd label="Minutos" className="font-bold">{totals.minutes}</RTd>
+                <RTd label="A repassar" className="font-bold text-t1">{formatCents(totals.cents)}</RTd>
               </tr>
             </tbody>
-          </Table>
+          </RTable>
         )}
       </Card>
       <p className="mt-3 text-xs text-t3">

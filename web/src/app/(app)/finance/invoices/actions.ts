@@ -5,7 +5,9 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { failure, fromDb, fromZod, success, type ActionState } from "@/lib/action-state";
-import { formatCents } from "@/lib/format";
+import { formatCents, parseMoneyToCents } from "@/lib/format";
+import { removeUserFile, uploadUserFile } from "@/lib/files";
+import { receiptFileError } from "@/components/finance/logic";
 
 // Only the admin writes payout periods and reviews invoices (RLS and RPCs agree).
 const ADMIN = ["admin"] as const;
@@ -69,22 +71,22 @@ export async function generateRequests(_prev: GenerateState, formData: FormData)
   };
 }
 
-const requestSchema = z.object({ id: z.string().guid(), period_id: z.string().guid() });
+const requestSchema = z.object({ id: z.string().guid() });
 
-function revalidatePeriod(periodId: string) {
-  revalidatePath(`/finance/invoices/${periodId}`);
-  revalidatePath("/finance/invoices");
-  revalidatePath("/finance");
+// Payout data shows up in the period pages, the professionals view and "Minhas Notas Fiscais".
+function revalidatePayouts() {
+  revalidatePath("/finance", "layout");
+  revalidatePath("/invoices");
 }
 
 export async function approveInvoice(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireRole([...ADMIN]);
-  const parsed = requestSchema.safeParse(Object.fromEntries(formData));
+  const parsed = requestSchema.safeParse({ id: formData.get("id") });
   if (!parsed.success) return failure("Solicitação inválida.");
   const supabase = await createClient();
   const { error } = await supabase.rpc("review_invoice", { target_request: parsed.data.id, approve: true });
   if (error) return fromDb(error);
-  revalidatePeriod(parsed.data.period_id);
+  revalidatePayouts();
   return success("Nota aprovada.");
 }
 
@@ -92,24 +94,89 @@ const rejectSchema = requestSchema.extend({ reason: z.string().trim().min(3, "In
 
 export async function rejectInvoice(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireRole([...ADMIN]);
-  const parsed = rejectSchema.safeParse(Object.fromEntries(formData));
+  const parsed = rejectSchema.safeParse({ id: formData.get("id"), reason: formData.get("reason") });
   if (!parsed.success) return fromZod(parsed.error);
   const supabase = await createClient();
   const { error } = await supabase.rpc("review_invoice", { target_request: parsed.data.id, approve: false, reason: parsed.data.reason });
   if (error) return fromDb(error);
-  revalidatePeriod(parsed.data.period_id);
-  return success("Nota recusada; o terapeuta foi avisado.");
+  revalidatePayouts();
+  return success("Nota recusada; o profissional foi avisado.");
 }
 
+function receiptFile(formData: FormData): File | null {
+  const file = formData.get("file");
+  return file instanceof File && file.size > 0 ? file : null;
+}
+
+// Marks an approved invoice as paid, optionally with the transfer receipt.
 export async function payInvoice(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireRole([...ADMIN]);
-  const parsed = requestSchema.safeParse(Object.fromEntries(formData));
+  const user = await requireRole([...ADMIN]);
+  const parsed = requestSchema.safeParse({ id: formData.get("id") });
   if (!parsed.success) return failure("Solicitação inválida.");
+
+  const file = receiptFile(formData);
+  let receiptPath: string | undefined;
+  if (file) {
+    const invalid = receiptFileError(file);
+    if (invalid) return failure("Verifique os campos destacados.", { file: [invalid] });
+    const upload = await uploadUserFile(user.id, file);
+    if (!upload.ok) return failure(upload.message, { file: [upload.message] });
+    receiptPath = upload.path;
+  }
+
   const supabase = await createClient();
-  const { error } = await supabase.rpc("mark_invoice_paid", { target_request: parsed.data.id });
+  const { error } = await supabase.rpc("mark_invoice_paid", { target_request: parsed.data.id, receipt_path: receiptPath });
+  if (error) {
+    if (receiptPath) await removeUserFile(receiptPath);
+    return fromDb(error);
+  }
+  revalidatePayouts();
+  return success(receiptPath ? "Repasse registrado com comprovante." : "Repasse registrado.");
+}
+
+export async function attachPayoutReceipt(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireRole([...ADMIN]);
+  const parsed = requestSchema.safeParse({ id: formData.get("id") });
+  if (!parsed.success) return failure("Solicitação inválida.");
+
+  const file = receiptFile(formData);
+  const invalid = receiptFileError(file);
+  if (invalid || !file) return failure("Verifique os campos destacados.", { file: [invalid ?? "Anexe o comprovante."] });
+  const upload = await uploadUserFile(user.id, file);
+  if (!upload.ok) return failure(upload.message, { file: [upload.message] });
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("attach_payout_receipt", { target_request: parsed.data.id, path: upload.path });
+  if (error) {
+    await removeUserFile(upload.path);
+    return fromDb(error);
+  }
+  revalidatePayouts();
+  return success("Comprovante anexado.");
+}
+
+const manualSchema = z.object({
+  payee: z.string().guid("Selecione o profissional."),
+  amount: z.string().trim().min(1, "Informe o valor."),
+  description: z.string().trim().min(3, "Descreva o que está sendo pago.").max(300),
+});
+
+export async function createManualRequest(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireRole([...ADMIN]);
+  const parsed = manualSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fromZod(parsed.error);
+  const amountCents = parseMoneyToCents(parsed.data.amount);
+  if (amountCents == null || amountCents <= 0) return failure("Verifique os campos destacados.", { amount: ["Valor inválido."] });
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("create_manual_invoice_request", {
+    payee: parsed.data.payee,
+    amount: amountCents,
+    request_description: parsed.data.description,
+  });
   if (error) return fromDb(error);
-  revalidatePeriod(parsed.data.period_id);
-  return success("Repasse registrado.");
+  revalidatePayouts();
+  return success("Solicitação enviada; o profissional foi avisado.");
 }
 
 export async function closePeriod(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -125,6 +192,6 @@ export async function closePeriod(_prev: ActionState, formData: FormData): Promi
     .select("id");
   if (error) return fromDb(error);
   if (!data?.length) return failure("Período não encontrado ou já fechado.");
-  revalidatePeriod(parsed.data.period_id);
+  revalidatePayouts();
   return success("Período fechado.");
 }

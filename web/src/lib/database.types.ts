@@ -45,19 +45,25 @@ isOneToOne: false
                   ]
                 },"appointments": {
                   Row: {
-                    "cancel_reason": string | null,"created_at": string,"created_by": string | null,"ends_at": string,"id": string,"notes": string | null,"patient_id": string,"room_id": string | null,"starts_at": string,"status": Database["public"]['Enums']["appointment_status"],"therapist_id": string,"therapy_id": string,"updated_at": string
+                    "cancel_reason": string | null,"created_at": string,"created_by": string | null,"ends_at": string,"family_confirmation": string | null,"family_confirmation_note": string | null,"family_confirmed_at": string | null,"family_confirmed_by": string | null,"id": string,"notes": string | null,"patient_id": string,"room_id": string | null,"starts_at": string,"status": Database["public"]['Enums']["appointment_status"],"therapist_id": string,"therapy_id": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "cancel_reason"?: string | null,"created_at"?: string,"created_by"?: string | null,"ends_at": string,"id"?: string,"notes"?: string | null,"patient_id": string,"room_id"?: string | null,"starts_at": string,"status"?: Database["public"]['Enums']["appointment_status"],"therapist_id": string,"therapy_id": string,"updated_at"?: string
+                    "cancel_reason"?: string | null,"created_at"?: string,"created_by"?: string | null,"ends_at": string,"family_confirmation"?: string | null,"family_confirmation_note"?: string | null,"family_confirmed_at"?: string | null,"family_confirmed_by"?: string | null,"id"?: string,"notes"?: string | null,"patient_id": string,"room_id"?: string | null,"starts_at": string,"status"?: Database["public"]['Enums']["appointment_status"],"therapist_id": string,"therapy_id": string,"updated_at"?: string
                   }
                   Update: {
-                    "cancel_reason"?: string | null,"created_at"?: string,"created_by"?: string | null,"ends_at"?: string,"id"?: string,"notes"?: string | null,"patient_id"?: string,"room_id"?: string | null,"starts_at"?: string,"status"?: Database["public"]['Enums']["appointment_status"],"therapist_id"?: string,"therapy_id"?: string,"updated_at"?: string
+                    "cancel_reason"?: string | null,"created_at"?: string,"created_by"?: string | null,"ends_at"?: string,"family_confirmation"?: string | null,"family_confirmation_note"?: string | null,"family_confirmed_at"?: string | null,"family_confirmed_by"?: string | null,"id"?: string,"notes"?: string | null,"patient_id"?: string,"room_id"?: string | null,"starts_at"?: string,"status"?: Database["public"]['Enums']["appointment_status"],"therapist_id"?: string,"therapy_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
       foreignKeyName: "appointments_created_by_fkey"
       columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "appointments_family_confirmed_by_fkey"
+      columns: ["family_confirmed_by"]
 isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
@@ -135,14 +141,14 @@ isOneToOne: false
                   ]
                 },"charges": {
                   Row: {
-                    "amount_cents": number,"created_at": string,"created_by": string | null,"due_date": string,"family_id": string,"id": string,"paid_at": string | null,"payment_method": string,"reference": string,"status": Database["public"]['Enums']["charge_status"]
+                    "amount_cents": number,"created_at": string,"created_by": string | null,"due_date": string,"family_id": string,"id": string,"paid_at": string | null,"payment_method": string,"receipt_path": string | null,"receipt_uploaded_at": string | null,"receipt_uploaded_by": string | null,"reference": string,"status": Database["public"]['Enums']["charge_status"]
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount_cents": number,"created_at"?: string,"created_by"?: string | null,"due_date": string,"family_id": string,"id"?: string,"paid_at"?: string | null,"payment_method"?: string,"reference": string,"status"?: Database["public"]['Enums']["charge_status"]
+                    "amount_cents": number,"created_at"?: string,"created_by"?: string | null,"due_date": string,"family_id": string,"id"?: string,"paid_at"?: string | null,"payment_method"?: string,"receipt_path"?: string | null,"receipt_uploaded_at"?: string | null,"receipt_uploaded_by"?: string | null,"reference": string,"status"?: Database["public"]['Enums']["charge_status"]
                   }
                   Update: {
-                    "amount_cents"?: number,"created_at"?: string,"created_by"?: string | null,"due_date"?: string,"family_id"?: string,"id"?: string,"paid_at"?: string | null,"payment_method"?: string,"reference"?: string,"status"?: Database["public"]['Enums']["charge_status"]
+                    "amount_cents"?: number,"created_at"?: string,"created_by"?: string | null,"due_date"?: string,"family_id"?: string,"id"?: string,"paid_at"?: string | null,"payment_method"?: string,"receipt_path"?: string | null,"receipt_uploaded_at"?: string | null,"receipt_uploaded_by"?: string | null,"reference"?: string,"status"?: Database["public"]['Enums']["charge_status"]
                   }
                   Relationships: [
                     {
@@ -156,6 +162,12 @@ isOneToOne: false
       columns: ["family_id"]
 isOneToOne: false
       referencedRelation: "families"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "charges_receipt_uploaded_by_fkey"
+      columns: ["receipt_uploaded_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
       referencedColumns: ["id"]
     }
                   ]
@@ -383,17 +395,29 @@ isOneToOne: false
                   ]
                 },"invoice_requests": {
                   Row: {
-                    "amount_cents": number,"created_at": string,"id": string,"invoice_file_path": string | null,"invoice_number": string | null,"paid_at": string | null,"period_id": string,"rejection_reason": string | null,"reviewed_at": string | null,"reviewed_by": string | null,"sessions_count": number,"status": Database["public"]['Enums']["invoice_status"],"submitted_at": string | null,"therapist_id": string,"therapy_id": string,"total_minutes": number
+                    "amount_cents": number,"created_at": string,"created_by": string | null,"description": string | null,"id": string,"invoice_file_path": string | null,"invoice_number": string | null,"paid_at": string | null,"payment_receipt_path": string | null,"period_id": string | null,"rejection_reason": string | null,"reviewed_at": string | null,"reviewed_by": string | null,"sessions_count": number,"status": Database["public"]['Enums']["invoice_status"],"submitted_at": string | null,"therapist_id": string,"therapy_id": string | null,"total_minutes": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount_cents": number,"created_at"?: string,"id"?: string,"invoice_file_path"?: string | null,"invoice_number"?: string | null,"paid_at"?: string | null,"period_id": string,"rejection_reason"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"sessions_count": number,"status"?: Database["public"]['Enums']["invoice_status"],"submitted_at"?: string | null,"therapist_id": string,"therapy_id": string,"total_minutes": number
+                    "amount_cents": number,"created_at"?: string,"created_by"?: string | null,"description"?: string | null,"id"?: string,"invoice_file_path"?: string | null,"invoice_number"?: string | null,"paid_at"?: string | null,"payment_receipt_path"?: string | null,"period_id"?: string | null,"rejection_reason"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"sessions_count"?: number,"status"?: Database["public"]['Enums']["invoice_status"],"submitted_at"?: string | null,"therapist_id": string,"therapy_id"?: string | null,"total_minutes"?: number
                   }
                   Update: {
-                    "amount_cents"?: number,"created_at"?: string,"id"?: string,"invoice_file_path"?: string | null,"invoice_number"?: string | null,"paid_at"?: string | null,"period_id"?: string,"rejection_reason"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"sessions_count"?: number,"status"?: Database["public"]['Enums']["invoice_status"],"submitted_at"?: string | null,"therapist_id"?: string,"therapy_id"?: string,"total_minutes"?: number
+                    "amount_cents"?: number,"created_at"?: string,"created_by"?: string | null,"description"?: string | null,"id"?: string,"invoice_file_path"?: string | null,"invoice_number"?: string | null,"paid_at"?: string | null,"payment_receipt_path"?: string | null,"period_id"?: string | null,"rejection_reason"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"sessions_count"?: number,"status"?: Database["public"]['Enums']["invoice_status"],"submitted_at"?: string | null,"therapist_id"?: string,"therapy_id"?: string | null,"total_minutes"?: number
                   }
                   Relationships: [
                     {
+      foreignKeyName: "invoice_requests_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invoice_requests_payee_fkey"
+      columns: ["therapist_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "invoice_requests_period_id_fkey"
       columns: ["period_id"]
 isOneToOne: false
@@ -404,12 +428,6 @@ isOneToOne: false
       columns: ["reviewed_by"]
 isOneToOne: false
       referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "invoice_requests_therapist_id_fkey"
-      columns: ["therapist_id"]
-isOneToOne: false
-      referencedRelation: "therapists"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "invoice_requests_therapy_id_fkey"
@@ -623,6 +641,32 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"session_attachments": {
+                  Row: {
+                    "created_at": string,"file_name": string,"file_path": string,"id": string,"mime_type": string | null,"session_note_id": string,"size_bytes": number | null,"uploaded_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"file_name": string,"file_path": string,"id"?: string,"mime_type"?: string | null,"session_note_id": string,"size_bytes"?: number | null,"uploaded_by"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,"file_name"?: string,"file_path"?: string,"id"?: string,"mime_type"?: string | null,"session_note_id"?: string,"size_bytes"?: number | null,"uploaded_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "session_attachments_session_note_id_fkey"
+      columns: ["session_note_id"]
+isOneToOne: false
+      referencedRelation: "session_notes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "session_attachments_uploaded_by_fkey"
+      columns: ["uploaded_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"session_notes": {
                   Row: {
                     "appointment_id": string | null,"content": string,"created_at": string,"id": string,"patient_id": string,"session_date": string,"therapist_id": string,"updated_at": string
@@ -817,7 +861,13 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "can_message":
+            "attach_charge_receipt":
+{ Args: { "path": string,"target_charge": string }; Returns: undefined
+                           },
+"attach_payout_receipt":
+{ Args: { "path": string,"target_request": string }; Returns: undefined
+                           },
+"can_message":
 { Args: { "a": string,"b": string }; Returns: boolean
                            },
 "can_see_profile":
@@ -825,6 +875,9 @@ isOneToOne: false
                            },
 "compute_session_amount":
 { Args: { "minutes": number,"model": Database["public"]['Enums']["pay_model"],"rate_cents": number }; Returns: number
+                           },
+"create_manual_invoice_request":
+{ Args: { "amount": number,"payee": string,"request_description": string }; Returns: string
                            },
 "current_app_role":
 { Args: Record<PropertyKey, never>; Returns: Database["public"]['Enums']["app_role"]
@@ -903,7 +956,7 @@ isOneToOne: false
 { Args: { "target_patient": string }; Returns: undefined
                            },
 "mark_invoice_paid":
-{ Args: { "target_request": string }; Returns: undefined
+{ Args: { "receipt_path"?: string,"target_request": string }; Returns: undefined
                            },
 "notify":
 { Args: { "notification_body"?: string,"notification_kind": string,"notification_link"?: string,"notification_title": string,"target": string }; Returns: undefined
@@ -946,6 +999,9 @@ isOneToOne: false
       } },
 "request_reschedule":
 { Args: { "proposed_start": string,"request_reason": string,"target_appointment": string }; Returns: string
+                           },
+"respond_session_confirmation":
+{ Args: { "confirmed": boolean,"note"?: string,"target_appointment": string }; Returns: undefined
                            },
 "review_invoice":
 { Args: { "approve": boolean,"reason"?: string,"target_request": string }; Returns: undefined

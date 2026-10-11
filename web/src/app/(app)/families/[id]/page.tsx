@@ -51,7 +51,7 @@ export default async function FamilyDetailPage({ params, searchParams }: PagePro
           )
         }
       />
-      <div className="grid gap-6 lg:grid-cols-[minmax(300px,380px)_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(300px,380px)_1fr] [&>*]:min-w-0">
         <div className="hidden lg:block">
           <FamilyList q={q} status={status} selectedId={family.id} />
         </div>

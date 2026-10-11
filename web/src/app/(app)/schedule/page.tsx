@@ -31,7 +31,7 @@ export default async function SchedulePage({ searchParams }: PageProps<"/schedul
   let query = supabase
     .from("appointments")
     .select(
-      "id, patient_id, therapist_id, room_id, starts_at, ends_at, status, notes, cancel_reason, patients(full_name), therapies(name), rooms(name), therapists(color, profiles(full_name))",
+      "id, patient_id, therapist_id, room_id, starts_at, ends_at, status, notes, cancel_reason, family_confirmation, family_confirmation_note, patients(full_name), therapies(name), rooms(name), therapists(color, profiles(full_name))",
     )
     .gte("starts_at", from)
     .lt("starts_at", to)
@@ -72,6 +72,8 @@ export default async function SchedulePage({ searchParams }: PageProps<"/schedul
     status: row.status,
     notes: row.notes,
     cancelReason: row.cancel_reason,
+    familyConfirmation: row.family_confirmation,
+    familyConfirmationNote: row.family_confirmation_note,
   }));
 
   const rooms: Option[] = roomRows ?? [];

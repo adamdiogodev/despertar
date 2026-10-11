@@ -16,7 +16,7 @@ import { updatePatient } from "../actions";
 const TAB_LABELS = {
   data: "Dados",
   care: "Vínculos",
-  sessions: "Sessões",
+  sessions: "Agenda e sessões",
   record: "Prontuário",
   plan: "Plano de atendimento",
   reports: "Relatórios",
@@ -36,7 +36,7 @@ export default async function PatientPage({ params, searchParams }: PageProps<"/
     .select(
       `id, family_id, full_name, birth_date, diagnosis, insurance_name, insurance_number, school, status, care_started_on, created_at,
        family:families (id, name),
-       care_assignments (id, therapist_id, frequency, starts_on, ends_on, therapy:therapies (id, name), therapist:therapists (id, color, profile:profiles (full_name)))`,
+       care_assignments (id, therapist_id, therapy_id, frequency, starts_on, ends_on, therapy:therapies (id, name), therapist:therapists (id, color, profile:profiles (full_name)))`,
     )
     .eq("id", id)
     .maybeSingle();
@@ -49,6 +49,9 @@ export default async function PatientPage({ params, searchParams }: PageProps<"/
   const isLinkedTherapist = user.role === "therapist" && activeAssignments.some((ca) => ca.therapist_id === user.id);
   const canSeeRecord = user.role === "coordination" || isLinkedTherapist;
   const canSeeFiles = isManager || user.role === "therapist";
+  const activeTherapists = [...new Map(activeAssignments.map((ca) => [ca.therapist_id, ca.therapist?.profile?.full_name ?? "Terapeuta"])).entries()].map(
+    ([therapistId, name]) => ({ id: therapistId, name }),
+  );
 
   const allowed: TabKey[] = ["data", "care", "sessions"];
   if (canSeeRecord) allowed.push("record", "plan");
@@ -126,7 +129,22 @@ export default async function PatientPage({ params, searchParams }: PageProps<"/
         ))}
 
       {active === "care" && <CareTab patientId={id} assignments={patient.care_assignments} canManage={isManager} today={today} />}
-      {active === "sessions" && <SessionsTab patientId={id} />}
+      {active === "sessions" && (
+        <SessionsTab
+          patientId={id}
+          patientName={patient.full_name}
+          viewer={{ userId: user.id, isStaff }}
+          canSchedule={isStaff && patient.status !== "inactive"}
+          assignments={activeAssignments.map((ca) => ({
+            patientId: id,
+            patientName: patient.full_name,
+            therapistId: ca.therapist_id,
+            therapistName: ca.therapist?.profile?.full_name ?? "",
+            therapyId: ca.therapy_id,
+            therapyName: ca.therapy?.name ?? "",
+          }))}
+        />
+      )}
       {active === "record" && <RecordTab patientId={id} userId={user.id} canWrite={isLinkedTherapist} today={today} />}
       {active === "plan" && (
         <PlanTab
@@ -135,8 +153,16 @@ export default async function PatientPage({ params, searchParams }: PageProps<"/
           myTherapies={isLinkedTherapist ? activeAssignments.filter((ca) => ca.therapist_id === user.id).flatMap((ca) => (ca.therapy ? [ca.therapy] : [])) : []}
         />
       )}
-      {active === "reports" && <ReportsTab patientId={id} />}
-      {active === "documents" && <DocumentsTab patientId={id} />}
+      {active === "reports" && (
+        <ReportsTab
+          patient={{ id, name: patient.full_name, therapists: activeTherapists }}
+          canRequest={isManager}
+          canUpload={isManager || isLinkedTherapist}
+          isTherapist={user.role === "therapist"}
+          userId={user.id}
+        />
+      )}
+      {active === "documents" && <DocumentsTab patient={{ id, name: patient.full_name }} canUpload={isManager || isLinkedTherapist} />}
     </>
   );
 }

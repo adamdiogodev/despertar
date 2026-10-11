@@ -2,11 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireRole } from "@/lib/auth";
+import { requireRole, type AppRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { failure, fromDb, fromZod, success, type ActionState } from "@/lib/action-state";
 import { removeUserFile, uploadUserFile } from "@/lib/files";
 
+// Any team member who can be a payee (session NFs for therapists, ad hoc ones for the staff).
+const PAYEE_ROLES: AppRole[] = ["coordination", "reception", "therapist"];
 const INVOICE_MIME_TYPES = ["application/pdf", "application/xml", "text/xml"];
 
 const submitSchema = z.object({
@@ -15,7 +17,7 @@ const submitSchema = z.object({
 });
 
 export async function submitInvoice(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const user = await requireRole(["therapist"]);
+  const user = await requireRole(PAYEE_ROLES);
   const parsed = submitSchema.safeParse({ id: formData.get("id"), number: formData.get("number") });
   if (!parsed.success) return fromZod(parsed.error);
 
@@ -37,5 +39,6 @@ export async function submitInvoice(_prev: ActionState, formData: FormData): Pro
     return fromDb(error);
   }
   revalidatePath("/invoices");
+  revalidatePath("/finance", "layout");
   return success("Nota fiscal enviada para conferência.");
 }

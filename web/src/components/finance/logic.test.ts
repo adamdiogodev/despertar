@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   chargeDisplayStatus,
   computeSessionAmount,
+  familyBalances,
+  paymentRange,
+  payoutTotals,
+  receiptFileError,
+  requestTitle,
   groupPreview,
   monthBounds,
   rateOn,
@@ -112,5 +117,67 @@ describe("groupPreview", () => {
     expect(groups).toHaveLength(2);
     expect(groups[0]).toMatchObject({ sessions: 2, minutes: 95, totalCents: 22167, missingRate: false, rules: [expect.stringMatching(/^R\$\s140,00\/hora$/)] });
     expect(groups[1]).toMatchObject({ therapistId: "t3", sessions: 1, totalCents: 0, missingRate: true, rules: [] });
+  });
+});
+
+
+describe("receiptFileError", () => {
+  it("requires a PDF or image", () => {
+    expect(receiptFileError(null)).toBe("Anexe o comprovante.");
+    expect(receiptFileError({ type: "application/pdf", size: 0 })).toBe("Anexe o comprovante.");
+    expect(receiptFileError({ type: "video/mp4", size: 10 })).toMatch(/PDF ou imagem/);
+    expect(receiptFileError({ type: "image/jpeg", size: 10 })).toBeNull();
+    expect(receiptFileError({ type: "application/pdf", size: 10 })).toBeNull();
+  });
+});
+
+describe("familyBalances", () => {
+  it("splits paid, open and overdue per family, ignoring canceled", () => {
+    const balances = familyBalances(
+      [
+        { family_id: "a", amount_cents: 1000, due_date: "2026-10-01", status: "paid" },
+        { family_id: "a", amount_cents: 2000, due_date: "2026-10-01", status: "pending" },
+        { family_id: "a", amount_cents: 3000, due_date: "2026-10-20", status: "pending" },
+        { family_id: "a", amount_cents: 4000, due_date: "2026-09-01", status: "awaiting_insurance" },
+        { family_id: "a", amount_cents: 9999, due_date: "2026-09-01", status: "canceled" },
+        { family_id: "b", amount_cents: 500, due_date: "2026-10-01", status: "paid" },
+      ],
+      "2026-10-10",
+    );
+    expect(balances.get("a")).toEqual({ paidCents: 1000, openCents: 9000, overdueCents: 2000, count: 5 });
+    expect(balances.get("b")).toEqual({ paidCents: 500, openCents: 0, overdueCents: 0, count: 1 });
+  });
+});
+
+describe("payoutTotals", () => {
+  it("sums payments in the range and in the year, and what is still open", () => {
+    const totals = payoutTotals(
+      [
+        { therapist_id: "t", amount_cents: 100, status: "paid", paid_on: "2026-10-05" },
+        { therapist_id: "t", amount_cents: 200, status: "paid", paid_on: "2026-03-05" },
+        { therapist_id: "t", amount_cents: 400, status: "paid", paid_on: "2025-12-31" },
+        { therapist_id: "t", amount_cents: 800, status: "approved", paid_on: null },
+        { therapist_id: "t", amount_cents: 1600, status: "requested", paid_on: null },
+      ],
+      { start: "2026-10-01", end: "2026-10-31" },
+      "2026",
+    );
+    expect(totals.get("t")).toEqual({ paidInRangeCents: 100, paidInYearCents: 300, openCents: 2400, count: 5 });
+  });
+});
+
+describe("paymentRange", () => {
+  it("covers a whole year or one month", () => {
+    expect(paymentRange("2026", null)).toEqual({ start: "2026-01-01", end: "2026-12-31" });
+    expect(paymentRange("2026", "02")).toEqual({ start: "2026-02-01", end: "2026-02-28" });
+    expect(paymentRange("26", null)).toBeNull();
+    expect(paymentRange("2026", "13")).toBeNull();
+  });
+});
+
+describe("requestTitle", () => {
+  it("names session requests by therapy and period and manual ones by description", () => {
+    expect(requestTitle({ description: null, therapy: { name: "Psicologia" }, period: { label: "Outubro" } })).toBe("Psicologia · Outubro");
+    expect(requestTitle({ description: "Plantão sábado", therapy: null, period: null })).toBe("Plantão sábado");
   });
 });

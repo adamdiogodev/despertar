@@ -17,6 +17,8 @@ export type ScheduleAppointment = {
   status: AppointmentStatus;
   notes: string | null;
   cancelReason: string | null;
+  familyConfirmation: string | null;
+  familyConfirmationNote: string | null;
 };
 
 export type ScheduleViewer = { userId: string; isStaff: boolean };

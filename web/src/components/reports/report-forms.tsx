@@ -17,9 +17,21 @@ function useCloseOnSuccess(state: ActionState, close: () => void) {
   }, [state, close]);
 }
 
-function CreateReportForm({ action, patients, chooseTherapist, close }: { action: Action; patients: PatientOption[]; chooseTherapist: boolean; close: () => void }) {
+function CreateReportForm({
+  action,
+  patients,
+  chooseTherapist,
+  defaultPatientId,
+  close,
+}: {
+  action: Action;
+  patients: PatientOption[];
+  chooseTherapist: boolean;
+  defaultPatientId?: string;
+  close: () => void;
+}) {
   const [state, formAction] = useActionState(action, initialActionState);
-  const [patientId, setPatientId] = useState("");
+  const [patientId, setPatientId] = useState(defaultPatientId ?? "");
   const therapists = patients.find((p) => p.id === patientId)?.therapists ?? [];
   useCloseOnSuccess(state, close);
 
@@ -71,11 +83,72 @@ function CreateReportForm({ action, patients, chooseTherapist, close }: { action
   );
 }
 
-export function CreateReportModal({ action, patients, chooseTherapist }: { action: Action; patients: PatientOption[]; chooseTherapist: boolean }) {
+export function CreateReportModal({
+  action,
+  patients,
+  chooseTherapist,
+  defaultPatientId,
+}: {
+  action: Action;
+  patients: PatientOption[];
+  chooseTherapist: boolean;
+  defaultPatientId?: string;
+}) {
   const label = chooseTherapist ? "Solicitar relatório" : "Novo relatório";
   return (
     <Modal trigger={`+ ${label}`} title={label} triggerSize="sm">
-      {(close) => <CreateReportForm action={action} patients={patients} chooseTherapist={chooseTherapist} close={close} />}
+      {(close) => <CreateReportForm action={action} patients={patients} chooseTherapist={chooseTherapist} defaultPatientId={defaultPatientId} close={close} />}
+    </Modal>
+  );
+}
+
+// Patient page: create + attach + send to review in one step.
+function UploadReportForm({ action, patient, chooseTherapist, accept, close }: { action: Action; patient: PatientOption; chooseTherapist: boolean; accept: string; close: () => void }) {
+  const [state, formAction] = useActionState(action, initialActionState);
+  useCloseOnSuccess(state, close);
+  return (
+    <form action={formAction} data-testid="report-upload-form">
+      <FormMessage state={state} />
+      <input type="hidden" name="patientId" value={patient.id} />
+      {chooseTherapist && (
+        <Field label="Terapeuta responsável" name="therapistId" error={state.fieldErrors?.therapistId} hint="Somente terapeutas com vínculo vigente.">
+          <Select name="therapistId" required defaultValue={patient.therapists.length === 1 ? patient.therapists[0].id : ""}>
+            <option value="">— Selecionar —</option>
+            {patient.therapists.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      )}
+      <Field label="Tipo" name="reportType" error={state.fieldErrors?.reportType}>
+        <Select name="reportType" required defaultValue="">
+          <option value="">— Selecionar —</option>
+          {Object.entries(REPORT_TYPE_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field label="Referência" name="referenceLabel" error={state.fieldErrors?.referenceLabel}>
+        <Input name="referenceLabel" placeholder="Ex.: 2º Sem. 2026" required maxLength={80} />
+      </Field>
+      <Field label="Arquivo do relatório" name="file" error={state.fieldErrors?.file} hint="PDF, Word ou imagem — até 20 MB. Vai para revisão da coordenação.">
+        <Input name="file" type="file" accept={accept} required />
+      </Field>
+      <div className="flex justify-end">
+        <SubmitButton pendingLabel="Enviando...">Enviar para revisão</SubmitButton>
+      </div>
+    </form>
+  );
+}
+
+export function UploadReportModal(props: { action: Action; patient: PatientOption; chooseTherapist: boolean; accept: string }) {
+  return (
+    <Modal trigger="📤 Incluir relatório" title={`Incluir relatório — ${props.patient.name}`} triggerSize="sm" triggerVariant="outline">
+      {(close) => <UploadReportForm {...props} close={close} />}
     </Modal>
   );
 }

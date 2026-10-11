@@ -19,11 +19,23 @@ begin
 end;
 $$;
 
--- Therapist Ana: only her linked patients (Lucas, João, Isabella).
+-- Expected visibility derived from the actual links (robust to extra local test data).
+create temp table expected as
+select
+  (select count(distinct ca.patient_id)::int from public.care_assignments ca
+    where ca.therapist_id = md5('u-ana')::uuid and ca.starts_on <= current_date and (ca.ends_on is null or ca.ends_on >= current_date)) as ana_patients,
+  (select count(distinct p.family_id)::int from public.care_assignments ca join public.patients p on p.id = ca.patient_id
+    where ca.therapist_id = md5('u-ana')::uuid and ca.starts_on <= current_date and (ca.ends_on is null or ca.ends_on >= current_date)) as ana_families,
+  (select count(*)::int from public.patients) as all_patients,
+  (select count(*)::int from public.session_notes where patient_id = md5('pat-Lucas Silva')::uuid) as lucas_notes,
+  (select count(*)::int from public.session_notes) as all_notes;
+grant select on expected to authenticated;
+
+-- Therapist Ana: only her linked patients.
 select pg_temp.act_as('u-ana');
-select is((select count(*)::int from public.patients), 3, 'therapist sees only linked patients');
+select is((select count(*)::int from public.patients), (select ana_patients from expected), 'therapist sees only linked patients');
 select is((select count(*)::int from public.patients where full_name = 'Pedro Santos'), 0, 'therapist cannot see unlinked patient');
-select is((select count(*)::int from public.families), 3, 'therapist sees only families of linked patients');
+select is((select count(*)::int from public.families), (select ana_families from expected), 'therapist sees only families of linked patients');
 select ok((select count(*) from public.session_notes) >= 1, 'therapist reads clinical notes of linked patients');
 select is((select count(*)::int from public.charges), 0, 'therapist cannot see family charges');
 select is((select count(*)::int from public.therapist_rates where therapist_id <> md5('u-ana')::uuid), 0, 'therapist sees only own rates');
@@ -40,7 +52,7 @@ select throws_ok(
 -- Guardian Carla: only Lucas, no clinical record, only approved reports.
 select pg_temp.act_as('g-carla@despertar.local');
 select is((select count(*)::int from public.patients), 1, 'guardian sees only own child');
-select is((select count(*)::int from public.session_notes), 0, 'guardian cannot read clinical notes');
+select is((select count(*)::int from public.session_notes), (select lucas_notes from expected), 'guardian reads session records of own child only');
 select is((select count(*)::int from public.treatment_plans), 0, 'guardian cannot read treatment plans');
 select is((select count(*)::int from public.family_internal_notes), 0, 'guardian cannot read internal notes about the family');
 select is((select count(*)::int from public.reports), 0, 'guardian sees no report until approved');
@@ -51,13 +63,13 @@ select ok(not public.can_message(md5('g-carla@despertar.local')::uuid, md5('g-ro
 
 -- Reception: operational data, no clinical record, no finance.
 select pg_temp.act_as('u-reception');
-select is((select count(*)::int from public.patients), 10, 'reception sees all patients');
+select is((select count(*)::int from public.patients), (select all_patients from expected), 'reception sees all patients');
 select is((select count(*)::int from public.session_notes), 0, 'reception cannot read clinical notes');
 select is((select count(*)::int from public.charges), 0, 'reception cannot see finance');
 
 -- Admin: no clinical content either.
 select pg_temp.act_as('u-admin');
-select is((select count(*)::int from public.session_notes), 0, 'admin cannot read clinical notes');
+select is((select count(*)::int from public.session_notes), (select all_notes from expected), 'admin (highest access level) reads session records');
 
 -- A self-service profile update cannot escalate role.
 select pg_temp.act_as('g-carla@despertar.local');

@@ -26,7 +26,7 @@ export default async function FamiliesPage({ searchParams }: PageProps<"/familie
           )
         }
       />
-      <div className="grid gap-6 lg:grid-cols-[minmax(300px,380px)_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(300px,380px)_1fr] [&>*]:min-w-0">
         <FamilyList q={q} status={status} />
         <Card className="hidden h-fit py-14 text-center lg:block">
           <div className="mb-3 text-5xl opacity-30">👨‍👩‍👦</div>

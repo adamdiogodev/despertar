@@ -1,10 +1,12 @@
 import Link from "next/link";
 import clsx from "clsx";
+import { twMerge } from "tailwind-merge";
 import type { ComponentProps, ReactNode } from "react";
 import { initials } from "@/lib/format";
 
+// clsx + tailwind-merge: later classes win (e.g. <Card className="p-0"> overrides p-5).
 export function cn(...values: Parameters<typeof clsx>) {
-  return clsx(...values);
+  return twMerge(clsx(...values));
 }
 
 type ButtonVariant = "primary" | "outline" | "ghost" | "danger" | "success";
@@ -157,22 +159,24 @@ export function Td({ children, className, colSpan }: { children?: ReactNode; cla
 }
 
 // Link-based tabs keep the active tab in the URL (?tab=), so pages stay server-rendered.
+// Pills that wrap onto new lines — never a horizontal scrollbar.
 export function Tabs({ tabs, active }: { tabs: { key: string; label: ReactNode; href: string }[]; active: string }) {
   return (
-    <div className="mb-5 flex gap-1 overflow-x-auto border-b border-line">
+    <nav className="mb-5 flex flex-wrap gap-1.5 rounded-xl border border-line bg-white p-1.5 shadow-card">
       {tabs.map((tab) => (
         <Link
           key={tab.key}
           href={tab.href}
+          aria-current={tab.key === active ? "page" : undefined}
           className={cn(
-            "-mb-px whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors",
-            tab.key === active ? "border-primary text-primary" : "border-transparent text-t2 hover:text-t1",
+            "rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors",
+            tab.key === active ? "bg-primary text-white shadow-sm" : "text-t2 hover:bg-line-light hover:text-t1",
           )}
         >
           {tab.label}
         </Link>
       ))}
-    </div>
+    </nav>
   );
 }
 

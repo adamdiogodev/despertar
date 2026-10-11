@@ -162,3 +162,77 @@ export function groupPreview(items: PreviewItem[]): PreviewGroup[] {
   }
   return [...groups.values()];
 }
+
+// Statuses a manager can set by hand ("overdue" stays derived from the due date).
+export const CHARGE_STATUS_OPTIONS: { value: ChargeStatus; label: string }[] = [
+  { value: "pending", label: "Pendente" },
+  { value: "paid", label: "Pago" },
+  { value: "awaiting_insurance", label: "Aguardando convênio" },
+  { value: "canceled", label: "Cancelado" },
+];
+
+export const RECEIPT_MIME_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp", "image/heic"];
+export const RECEIPT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.webp,.heic";
+
+// Payment receipts are PDFs or photos; size is enforced by uploadUserFile.
+export function receiptFileError(file: { type: string; size: number } | null): string | null {
+  if (!file || file.size === 0) return "Anexe o comprovante.";
+  if (!RECEIPT_MIME_TYPES.includes(file.type)) return "Envie o comprovante em PDF ou imagem (JPG, PNG, WEBP, HEIC).";
+  return null;
+}
+
+export type Balance = { paidCents: number; openCents: number; overdueCents: number; count: number };
+
+// Totals per family: paid, still open (pending + awaiting insurance) and the overdue part of open.
+export function familyBalances(charges: ChargeLike[], today: string): Map<string, Balance> {
+  const balances = new Map<string, Balance>();
+  for (const c of charges) {
+    const entry = balances.get(c.family_id) ?? { paidCents: 0, openCents: 0, overdueCents: 0, count: 0 };
+    entry.count += 1;
+    if (c.status === "paid") entry.paidCents += c.amount_cents;
+    else if (c.status === "pending" || c.status === "awaiting_insurance") {
+      entry.openCents += c.amount_cents;
+      if (chargeDisplayStatus(c.status, c.due_date, today) === "overdue") entry.overdueCents += c.amount_cents;
+    }
+    balances.set(c.family_id, entry);
+  }
+  return balances;
+}
+
+type RequestLike = { therapist_id: string; amount_cents: number; status: InvoiceStatus; paid_on: string | null };
+
+export type PayoutTotals = { paidInRangeCents: number; paidInYearCents: number; openCents: number; count: number };
+
+// Totals per payee. `paid_on` is the local date of the payment; open = anything not paid yet.
+export function payoutTotals(requests: RequestLike[], range: { start: string; end: string }, year: string): Map<string, PayoutTotals> {
+  const totals = new Map<string, PayoutTotals>();
+  for (const r of requests) {
+    const entry = totals.get(r.therapist_id) ?? { paidInRangeCents: 0, paidInYearCents: 0, openCents: 0, count: 0 };
+    entry.count += 1;
+    if (r.status === "paid" && r.paid_on) {
+      if (r.paid_on >= range.start && r.paid_on <= range.end) entry.paidInRangeCents += r.amount_cents;
+      if (r.paid_on.startsWith(`${year}-`)) entry.paidInYearCents += r.amount_cents;
+    } else if (r.status !== "paid") {
+      entry.openCents += r.amount_cents;
+    }
+    totals.set(r.therapist_id, entry);
+  }
+  return totals;
+}
+
+// "2026" → whole year; "2026-10" → that month; null when malformed.
+export function paymentRange(year: string, month: string | null): { start: string; end: string } | null {
+  if (!/^\d{4}$/.test(year)) return null;
+  if (!month) return { start: `${year}-01-01`, end: `${year}-12-31` };
+  return monthBounds(`${year}-${month}`);
+}
+
+// Session-based requests are named by therapy and period; manual ones by their description.
+export function requestTitle(request: {
+  description: string | null;
+  therapy: { name: string } | null;
+  period: { label: string } | null;
+}): string {
+  if (request.period) return `${request.therapy?.name ?? "Terapia"} · ${request.period.label}`;
+  return request.description ?? "Solicitação avulsa";
+}

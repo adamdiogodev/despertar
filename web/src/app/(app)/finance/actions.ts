@@ -6,7 +6,8 @@ import { MANAGER_ROLES, requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { failure, fromDb, fromZod, success, type ActionState } from "@/lib/action-state";
 import { parseMoneyToCents } from "@/lib/format";
-import { PAYMENT_METHODS } from "@/components/finance/logic";
+import { removeUserFile, uploadUserFile } from "@/lib/files";
+import { PAYMENT_METHODS, receiptFileError } from "@/components/finance/logic";
 
 const chargeSchema = z.object({
   family_id: z.string().guid("Selecione a família."),
@@ -41,30 +42,48 @@ export async function createCharge(_prev: ActionState, formData: FormData): Prom
   return success("Cobrança criada.");
 }
 
-const idSchema = z.object({ id: z.string().guid() });
+const statusSchema = z.object({
+  id: z.string().guid(),
+  status: z.enum(["pending", "paid", "awaiting_insurance", "canceled"], "Selecione o status."),
+});
 
-async function updateChargeStatus(formData: FormData, status: "paid" | "canceled", message: string): Promise<ActionState> {
+// Managers may move a charge between any stored status; "Atrasado" stays derived from the due date.
+export async function setChargeStatus(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireRole(MANAGER_ROLES);
-  const parsed = idSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return failure("Cobrança inválida.");
+  const parsed = statusSchema.safeParse({ id: formData.get("id"), status: formData.get("status") });
+  if (!parsed.success) return failure("Status inválido.");
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("charges")
-    .update({ status, paid_at: status === "paid" ? new Date().toISOString() : null })
-    .eq("id", parsed.data.id)
-    .in("status", ["pending", "awaiting_insurance"])
-    .select("id");
+  const { data: current } = await supabase.from("charges").select("status, paid_at").eq("id", parsed.data.id).maybeSingle();
+  if (!current) return failure("Cobrança não encontrada.");
+  if (current.status === parsed.data.status) return success("Status mantido.");
+
+  const paidAt = parsed.data.status === "paid" ? (current.paid_at ?? new Date().toISOString()) : null;
+  const { error } = await supabase.from("charges").update({ status: parsed.data.status, paid_at: paidAt }).eq("id", parsed.data.id);
   if (error) return fromDb(error);
-  if (!data?.length) return failure("Cobrança não encontrada ou já finalizada.");
   revalidatePath("/finance");
-  return success(message);
+  revalidatePath("/portal/finance");
+  return success("Status atualizado.");
 }
 
-export async function markChargePaid(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  return updateChargeStatus(formData, "paid", "Cobrança marcada como paga.");
-}
+export async function attachChargeReceipt(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireRole(MANAGER_ROLES);
+  const parsed = z.object({ id: z.string().guid() }).safeParse({ id: formData.get("id") });
+  if (!parsed.success) return failure("Cobrança inválida.");
 
-export async function cancelCharge(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  return updateChargeStatus(formData, "canceled", "Cobrança cancelada.");
+  const file = formData.get("file") instanceof File ? (formData.get("file") as File) : null;
+  const invalid = receiptFileError(file);
+  if (invalid) return failure("Verifique os campos destacados.", { file: [invalid] });
+  const upload = await uploadUserFile(user.id, file);
+  if (!upload.ok) return failure(upload.message, { file: [upload.message] });
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("attach_charge_receipt", { target_charge: parsed.data.id, path: upload.path });
+  if (error) {
+    await removeUserFile(upload.path);
+    return fromDb(error);
+  }
+  revalidatePath("/finance");
+  revalidatePath("/portal/finance");
+  return success("Comprovante anexado.");
 }

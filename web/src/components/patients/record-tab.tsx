@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { Alert, Avatar, Card, CardTitle, EmptyState } from "@/components/ui/primitives";
 import { EditSessionNote, SessionNoteForm, type CompletedSessionOption } from "./session-note-form";
+import { SessionRecordView } from "./session-record-view";
 
 export async function RecordTab({ patientId, userId, canWrite, today }: { patientId: string; userId: string; canWrite: boolean; today: string }) {
   const supabase = await createClient();
@@ -16,7 +17,7 @@ export async function RecordTab({ patientId, userId, canWrite, today }: { patien
     supabase
       .from("session_notes")
       .select(
-        "id, session_date, content, appointment_id, therapist_id, created_at, updated_at, therapist:therapists (color, profile:profiles (full_name)), appointment:appointments (starts_at, therapy:therapies (name))",
+        "id, session_date, content, appointment_id, therapist_id, created_at, updated_at, therapist:therapists (color, profile:profiles (full_name)), appointment:appointments (starts_at, therapy:therapies (name)), session_attachments (id, file_path, file_name, mime_type)",
       )
       .eq("patient_id", patientId)
       .order("session_date", { ascending: false })
@@ -27,7 +28,8 @@ export async function RecordTab({ patientId, userId, canWrite, today }: { patien
           .select("id, starts_at, therapy:therapies (name)")
           .eq("patient_id", patientId)
           .eq("therapist_id", userId)
-          .eq("status", "completed")
+          .in("status", ["scheduled", "confirmed", "completed"])
+          .lte("starts_at", new Date().toISOString())
           .order("starts_at", { ascending: false })
           .limit(50)
       : Promise.resolve({ data: [] as { id: string; starts_at: string; therapy: { name: string } | null }[] }),
@@ -43,19 +45,22 @@ export async function RecordTab({ patientId, userId, canWrite, today }: { patien
 
   return (
     <div className="grid gap-6">
-      <Alert tone="purple">🔒 Prontuário sigiloso. O acesso é registrado para auditoria (LGPD).</Alert>
+      <Alert tone="purple">
+        🔒 O acesso ao prontuário é registrado para auditoria (LGPD). 👪 Os registros de sessão (texto e anexos) são compartilhados com a família no
+        portal; o plano de atendimento continua restrito a terapeutas e coordenação.
+      </Alert>
 
       {canWrite && (
         <Card>
-          <CardTitle>Nova evolução</CardTitle>
+          <CardTitle>Novo registro de sessão</CardTitle>
           <SessionNoteForm patientId={patientId} today={today} sessions={freeSessions} />
         </Card>
       )}
 
       <Card>
-        <CardTitle>Evoluções</CardTitle>
+        <CardTitle>Registros de sessão</CardTitle>
         {notes.length === 0 ? (
-          <EmptyState icon="📝" title="Nenhuma evolução registrada" />
+          <EmptyState icon="📝" title="Nenhum registro de sessão" />
         ) : (
           <ol className="relative border-l-2 border-line pl-6">
             {notes.map((note) => {
@@ -85,7 +90,7 @@ export async function RecordTab({ patientId, userId, canWrite, today }: { patien
                       />
                     )}
                   </div>
-                  <p className="whitespace-pre-wrap rounded-lg bg-page px-4 py-3 text-sm leading-relaxed text-t1">{note.content}</p>
+                  <SessionRecordView content={note.content} attachments={note.session_attachments} />
                 </li>
               );
             })}

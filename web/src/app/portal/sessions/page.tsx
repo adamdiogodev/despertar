@@ -5,7 +5,10 @@ import { Alert, Badge, Card, CardTitle, EmptyState, PageHeader } from "@/compone
 import { ChildSwitcher, ClinicContact } from "@/components/portal/child-switcher";
 import { loadClinicSettings, loadPortalChildren } from "@/components/portal/data";
 import { SessionActions } from "@/components/portal/session-actions";
-import { cancelAppointment, requestReschedule } from "./actions";
+import { SessionConfirmation } from "@/components/portal/session-confirmation";
+import { SESSION_RECORD_SELECT, SessionRecordView, type SessionAttachment } from "@/components/patients/session-record-view";
+import { familyConfirmationMeta } from "@/components/patients/session-record-utils";
+import { cancelAppointment, requestReschedule, respondSessionConfirmation } from "./actions";
 
 const STATUS = {
   scheduled: { label: "Agendada", tone: "blue" },
@@ -22,7 +25,7 @@ const REQUEST_STATUS = {
 } as const;
 
 const APPOINTMENT_FIELDS =
-  "id, patient_id, starts_at, ends_at, status, cancel_reason, rooms(name), therapies(name), therapists(profiles(full_name)), patients(full_name)";
+  "id, patient_id, starts_at, ends_at, status, cancel_reason, family_confirmation, family_confirmation_note, rooms(name), therapies(name), therapists(profiles(full_name)), patients(full_name)";
 
 type Session = {
   id: string;
@@ -30,6 +33,8 @@ type Session = {
   ends_at: string;
   status: keyof typeof STATUS;
   cancel_reason: string | null;
+  family_confirmation: string | null;
+  family_confirmation_note: string | null;
   rooms: { name: string } | null;
   therapies: { name: string } | null;
   therapists: { profiles: { full_name: string } | null } | null;
@@ -72,7 +77,7 @@ export default async function PortalSessionsPage({ searchParams }: PageProps<"/p
   const supabase = await createClient();
   const nowIso = new Date().toISOString();
 
-  const [upcomingRes, historyRes, requestsRes] = await Promise.all([
+  const [upcomingRes, historyRes, requestsRes, awaitingRes] = await Promise.all([
     supabase
       .from("appointments")
       .select(APPOINTMENT_FIELDS)
@@ -93,10 +98,36 @@ export default async function PortalSessionsPage({ searchParams }: PageProps<"/p
       .select("id, appointment_id, proposed_starts_at, reason, status, decision_note, created_at, appointments(starts_at, patient_id, patients(full_name), therapies(name))")
       .order("created_at", { ascending: false })
       .limit(30),
+    supabase
+      .from("appointments")
+      .select(APPOINTMENT_FIELDS)
+      .in("patient_id", patientIds)
+      .eq("status", "completed")
+      .is("family_confirmation", null)
+      .order("starts_at", { ascending: false })
+      .limit(30),
   ]);
 
   const upcoming = (upcomingRes.data ?? []) as Session[];
-  const history = (historyRes.data ?? []) as Session[];
+  const awaiting = (awaitingRes.data ?? []) as Session[];
+  const awaitingIds = new Set(awaiting.map((session) => session.id));
+  const history = ((historyRes.data ?? []) as Session[]).filter((session) => !awaitingIds.has(session.id));
+  const completedIds = [...awaiting, ...history].filter((session) => session.status === "completed").map((session) => session.id);
+  const { data: notes } = completedIds.length
+    ? await supabase.from("session_notes").select(SESSION_RECORD_SELECT).in("appointment_id", completedIds)
+    : { data: [] };
+  const records = new Map<string, { content: string; session_attachments: SessionAttachment[] }>(
+    (notes ?? []).map((note) => [note.appointment_id ?? "", note]),
+  );
+  const recordOf = (session: Session) => {
+    const record = records.get(session.id);
+    return record ? (
+      <div className="mt-1 w-full">
+        <div className="mb-1 text-xs font-bold uppercase tracking-wide text-t3">Registro da sessão</div>
+        <SessionRecordView content={record.content} attachments={record.session_attachments} />
+      </div>
+    ) : null;
+  };
   const requests = (requestsRes.data ?? []).filter((r) => r.appointments && patientIds.includes(r.appointments.patient_id));
   const pendingAppointments = new Set(requests.filter((r) => r.status === "pending").map((r) => r.appointment_id));
   const minHours = clinic.reschedule_min_hours;
@@ -110,6 +141,29 @@ export default async function PortalSessionsPage({ searchParams }: PageProps<"/p
         📌 Remarcações e cancelamentos devem ser solicitados com pelo menos <strong>{minHours} horas de antecedência</strong>. Em cima da hora?
         Fale com a clínica: <ClinicContact phone={clinic.phone} whatsapp={clinic.whatsapp} />
       </Alert>
+
+      {awaiting.length > 0 && (
+        <Card className="mb-6 scroll-mt-20 border-warn p-0" id="pending-confirmation">
+          <div className="px-5 pt-5">
+            <CardTitle>✋ Sessões aguardando seu de acordo ({awaiting.length})</CardTitle>
+            <p className="-mt-2 mb-3 text-sm text-t2">Confira o registro do terapeuta e confirme se a sessão foi realizada.</p>
+          </div>
+          <ul>
+            {awaiting.map((session) => (
+              <li key={session.id} className="flex flex-wrap items-center gap-4 border-t border-line-light px-5 py-4" data-testid="awaiting-session">
+                <DateBlock value={session.starts_at} />
+                <SessionInfo session={session} />
+                <SessionConfirmation
+                  appointmentId={session.id}
+                  label={`${session.patients?.full_name} — ${formatDateTime(session.starts_at)}`}
+                  action={respondSessionConfirmation}
+                />
+                {recordOf(session)}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Card className="mb-6 p-0">
         <div className="px-5 pt-5">
@@ -180,11 +234,20 @@ export default async function PortalSessionsPage({ searchParams }: PageProps<"/p
           <ul>
             {history.map((session) => {
               const status = session.status === "scheduled" || session.status === "confirmed" ? null : STATUS[session.status];
+              const answer = familyConfirmationMeta(session.status, session.family_confirmation, session.family_confirmation_note);
               return (
-                <li key={session.id} className="flex flex-wrap items-center gap-4 border-t border-line-light px-5 py-3 opacity-90" data-testid="past-session">
+                <li key={session.id} className="flex flex-wrap items-center gap-4 border-t border-line-light px-5 py-3" data-testid="past-session">
                   <DateBlock value={session.starts_at} />
                   <SessionInfo session={session} />
-                  {status ? <Badge tone={status.tone}>{status.label}</Badge> : <Badge tone="gray">Aguardando registro</Badge>}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {status ? <Badge tone={status.tone}>{status.label}</Badge> : <Badge tone="gray">Aguardando registro</Badge>}
+                    {answer && session.family_confirmation && (
+                      <Badge tone={answer.tone}>
+                        {session.family_confirmation === "confirmed" ? "Você confirmou" : `Você contestou: ${session.family_confirmation_note ?? ""}`}
+                      </Badge>
+                    )}
+                  </div>
+                  {recordOf(session)}
                 </li>
               );
             })}

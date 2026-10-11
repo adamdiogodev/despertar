@@ -2,7 +2,9 @@ import Link from "next/link";
 import { MANAGER_ROLES, requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatCents, formatDate, localDateKey } from "@/lib/format";
-import { Alert, Badge, Card, EmptyState, LinkButton, PageHeader, Table, Td, Th } from "@/components/ui/primitives";
+import { Alert, Badge, Card, EmptyState, LinkButton, PageHeader } from "@/components/ui/primitives";
+import { FinanceTabs, ProfessionalsSubnav } from "@/components/finance/finance-tabs";
+import { RTable, RTd, RTh } from "@/components/finance/responsive-table";
 import { NewPeriodModal } from "@/components/finance/invoice-admin-forms";
 import { createPeriod } from "./actions";
 
@@ -17,6 +19,7 @@ export default async function InvoicePeriodsPage() {
 
   const totals = new Map<string, { count: number; cents: number; paidCents: number; awaiting: number }>();
   for (const request of requestsRes.data ?? []) {
+    if (!request.period_id) continue; // manual requests live in the professionals view
     const entry = totals.get(request.period_id) ?? { count: 0, cents: 0, paidCents: 0, awaiting: 0 };
     entry.count += 1;
     entry.cents += request.amount_cents;
@@ -29,35 +32,30 @@ export default async function InvoicePeriodsPage() {
   const periods = periodsRes.data ?? [];
 
   return (
-    <div>
+    <div className="min-w-0">
       <PageHeader
-        title="Notas fiscais dos terapeutas"
-        description="Períodos de fechamento, solicitações de NF e repasses"
-        actions={
-          <>
-            <LinkButton href="/finance" variant="ghost" size="sm">
-              ← Financeiro
-            </LinkButton>
-            {isAdmin && <NewPeriodModal action={createPeriod} defaultStart={`${today.slice(0, 7)}-01`} defaultEnd={today} />}
-          </>
-        }
+        title="Financeiro"
+        description="NF por período de sessões: fechamento, solicitações e repasses"
+        actions={isAdmin ? <NewPeriodModal action={createPeriod} defaultStart={`${today.slice(0, 7)}-01`} defaultEnd={today} /> : undefined}
       />
+      <FinanceTabs active="professionals" />
+      <ProfessionalsSubnav active="periods" />
       {!isAdmin && <Alert tone="blue">Visualização somente leitura. Apenas o administrador gera e confere as notas.</Alert>}
 
-      <Card className="p-0">
+      <Card className="min-w-0 p-0">
         {periods.length === 0 ? (
           <EmptyState title="Nenhum período" description="Crie um período de fechamento para gerar as solicitações de nota fiscal." />
         ) : (
-          <Table>
+          <RTable>
             <thead>
               <tr>
-                <Th>Período</Th>
-                <Th>Datas</Th>
-                <Th>Status</Th>
-                <Th>Solicitações</Th>
-                <Th>Total</Th>
-                <Th>Pago</Th>
-                <Th />
+                <RTh>Período</RTh>
+                <RTh>Datas</RTh>
+                <RTh>Status</RTh>
+                <RTh>Solicitações</RTh>
+                <RTh>Total</RTh>
+                <RTh>Pago</RTh>
+                <RTh />
               </tr>
             </thead>
             <tbody>
@@ -65,33 +63,35 @@ export default async function InvoicePeriodsPage() {
                 const total = totals.get(period.id);
                 return (
                   <tr key={period.id} data-testid="period-row">
-                    <Td className="font-semibold text-t1">
+                    <RTd className="font-semibold text-t1">
                       <Link href={`/finance/invoices/${period.id}`} className="hover:text-primary">
                         {period.label}
                       </Link>
-                    </Td>
-                    <Td>
+                    </RTd>
+                    <RTd label="Datas">
                       {formatDate(period.starts_on)} a {formatDate(period.ends_on)}
-                    </Td>
-                    <Td>
+                    </RTd>
+                    <RTd label="Status">
                       <Badge tone={period.status === "open" ? "green" : "gray"}>{period.status === "open" ? "Aberto" : "Fechado"}</Badge>
-                    </Td>
-                    <Td>
+                    </RTd>
+                    <RTd label="Solicitações">
                       {total?.count ?? 0}
                       {total?.awaiting ? <span className="ml-2 text-xs font-semibold text-info">{total.awaiting} para conferir</span> : null}
-                    </Td>
-                    <Td className="font-bold text-t1">{formatCents(total?.cents ?? 0)}</Td>
-                    <Td>{formatCents(total?.paidCents ?? 0)}</Td>
-                    <Td>
+                    </RTd>
+                    <RTd label="Total" className="font-bold text-t1">
+                      {formatCents(total?.cents ?? 0)}
+                    </RTd>
+                    <RTd label="Pago">{formatCents(total?.paidCents ?? 0)}</RTd>
+                    <RTd>
                       <LinkButton href={`/finance/invoices/${period.id}`} variant="outline" size="sm">
                         Abrir
                       </LinkButton>
-                    </Td>
+                    </RTd>
                   </tr>
                 );
               })}
             </tbody>
-          </Table>
+          </RTable>
         )}
       </Card>
     </div>

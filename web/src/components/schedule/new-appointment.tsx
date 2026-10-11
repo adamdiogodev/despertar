@@ -19,17 +19,19 @@ export type AssignmentOption = {
 
 const initialState: CreateAppointmentsState = { ok: false };
 
-export function NewAppointment({ assignments, rooms, defaultDate }: { assignments: AssignmentOption[]; rooms: Option[]; defaultDate: string }) {
+type Props = { assignments: AssignmentOption[]; rooms: Option[]; defaultDate: string; defaultPatientId?: string; trigger?: string };
+
+export function NewAppointment({ trigger = "+ Novo agendamento", ...props }: Props) {
   return (
-    <Modal trigger="+ Novo agendamento" title="Novo agendamento" triggerSize="sm">
-      {() => <NewAppointmentForm assignments={assignments} rooms={rooms} defaultDate={defaultDate} />}
+    <Modal trigger={trigger} title="Novo agendamento" triggerSize="sm">
+      {() => <NewAppointmentForm {...props} />}
     </Modal>
   );
 }
 
-function NewAppointmentForm({ assignments, rooms, defaultDate }: { assignments: AssignmentOption[]; rooms: Option[]; defaultDate: string }) {
+function NewAppointmentForm({ assignments, rooms, defaultDate, defaultPatientId }: Props) {
   const [state, action] = useActionState(createAppointments, initialState);
-  const [patientId, setPatientId] = useState("");
+  const [patientId, setPatientId] = useState(defaultPatientId ?? "");
   const patients = [...new Map(assignments.map((item) => [item.patientId, item.patientName])).entries()].sort((a, b) => a[1].localeCompare(b[1], "pt-BR"));
   const patientAssignments = assignments.filter((item) => item.patientId === patientId);
 

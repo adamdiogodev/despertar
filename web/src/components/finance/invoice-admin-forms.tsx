@@ -70,15 +70,15 @@ export function GenerateRequestsForm({ action, periodId }: { action: (state: Gen
   );
 }
 
-export function RejectInvoiceModal({ action, requestId, periodId }: { action: Action; requestId: string; periodId: string }) {
+export function RejectInvoiceModal({ action, requestId }: { action: Action; requestId: string }) {
   return (
     <Modal trigger="Recusar" triggerVariant="ghost" triggerSize="sm" title="Recusar nota fiscal">
-      {(close) => <RejectForm action={action} requestId={requestId} periodId={periodId} onDone={close} />}
+      {(close) => <RejectForm action={action} requestId={requestId} onDone={close} />}
     </Modal>
   );
 }
 
-function RejectForm({ action, requestId, periodId, onDone }: { action: Action; requestId: string; periodId: string; onDone: () => void }) {
+function RejectForm({ action, requestId, onDone }: { action: Action; requestId: string; onDone: () => void }) {
   const [state, formAction] = useActionState(action, initialActionState);
   useEffect(() => {
     if (state.ok) onDone();
@@ -87,8 +87,7 @@ function RejectForm({ action, requestId, periodId, onDone }: { action: Action; r
     <form action={formAction}>
       <FormMessage state={state} />
       <input type="hidden" name="id" value={requestId} />
-      <input type="hidden" name="period_id" value={periodId} />
-      <Field label="Motivo da recusa" name="reason" error={state.fieldErrors?.reason} hint="O terapeuta verá este motivo e poderá reenviar a nota.">
+      <Field label="Motivo da recusa" name="reason" error={state.fieldErrors?.reason} hint="O profissional verá este motivo e poderá reenviar a nota.">
         <Textarea name="reason" required rows={3} maxLength={500} placeholder="Ex.: valor da NF diverge do solicitado" />
       </Field>
       <div className="flex justify-end">

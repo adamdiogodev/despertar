@@ -15,6 +15,7 @@ function UploadForm({
   patients,
   allowInternal,
   accept,
+  defaultTarget,
   close,
 }: {
   action: Action;
@@ -22,6 +23,7 @@ function UploadForm({
   patients: Option[];
   allowInternal: boolean;
   accept: string;
+  defaultTarget?: string;
   close: () => void;
 }) {
   const [state, formAction] = useActionState(action, initialActionState);
@@ -46,7 +48,7 @@ function UploadForm({
         </Select>
       </Field>
       <Field label="Família ou paciente" name="target" error={state.fieldErrors?.target}>
-        <Select name="target" defaultValue="" required={!allowInternal}>
+        <Select name="target" defaultValue={defaultTarget ?? ""} required={!allowInternal}>
           <option value="">{allowInternal ? "Nenhum — documento interno da clínica" : "— Selecionar —"}</option>
           {families.length > 0 && (
             <optgroup label="Famílias">
@@ -82,7 +84,7 @@ function UploadForm({
   );
 }
 
-export function UploadDocumentModal(props: { action: Action; families: Option[]; patients: Option[]; allowInternal: boolean; accept: string }) {
+export function UploadDocumentModal(props: { action: Action; families: Option[]; patients: Option[]; allowInternal: boolean; accept: string; defaultTarget?: string }) {
   return (
     <Modal trigger="+ Novo documento" title="Novo documento" triggerSize="sm">
       {(close) => <UploadForm {...props} close={close} />}

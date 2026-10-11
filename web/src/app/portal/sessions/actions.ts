@@ -58,3 +58,33 @@ export async function cancelAppointment(_prev: ActionState, formData: FormData):
   revalidatePath("/portal");
   return success("Sessão cancelada. A clínica foi avisada.");
 }
+
+const confirmationSchema = z
+  .object({
+    appointmentId: z.string().guid(),
+    answer: z.enum(["confirm", "dispute"]),
+    note: z.string().trim().max(1000).optional().default(""),
+  })
+  .refine((value) => value.answer === "confirm" || value.note.length >= 3, {
+    message: "Conte o que aconteceu para a clínica verificar.",
+    path: ["note"],
+  });
+
+// "De acordo" / "Contestar": the RPC checks ownership, completion and single answer.
+export async function respondSessionConfirmation(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireRole(["guardian"]);
+  const parsed = confirmationSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fromZod(parsed.error);
+  const confirmed = parsed.data.answer === "confirm";
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("respond_session_confirmation", {
+    target_appointment: parsed.data.appointmentId,
+    confirmed,
+    note: parsed.data.note || undefined,
+  });
+  if (error) return fromDb(error);
+  revalidatePath("/portal/sessions");
+  revalidatePath("/portal");
+  return success(confirmed ? "Obrigado! Sessão confirmada." : "Contestação enviada. A clínica vai verificar e retornar.");
+}

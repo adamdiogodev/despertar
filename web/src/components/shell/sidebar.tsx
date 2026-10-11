@@ -31,16 +31,16 @@ export function Sidebar({ groups, userName, roleLabel }: { groups: NavGroup[]; u
           mobileOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex items-center gap-3 border-b border-white/10 px-5 py-5">
+        <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-lg font-black">D</div>
           <div>
             <div className="text-sm font-extrabold tracking-wide">SISTEMA DESPERTAR</div>
             <div className="text-[11px] text-white/50">Gestão Clínica</div>
           </div>
         </div>
-        <nav className="scrollbar-thin flex-1 overflow-y-auto px-3 py-4">
+        <nav className="sidebar-scroll flex-1 px-3 py-3">
           {groups.map((group) => (
-            <div key={group.label} className="mb-4">
+            <div key={group.label} className="mb-3">
               <div className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-white/35">{group.label}</div>
               {group.items.map((item) => (
                 <Link
@@ -48,7 +48,7 @@ export function Sidebar({ groups, userName, roleLabel }: { groups: NavGroup[]; u
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
                   className={cn(
-                    "mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    "mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                     isActive(item.href) ? "bg-primary/20 text-white" : "text-white/70 hover:bg-sidebar-hover hover:text-white",
                   )}
                 >

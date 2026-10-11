@@ -4,11 +4,14 @@ import { z } from "zod";
 import { MANAGER_ROLES, requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatCents, formatDate, formatDateTime } from "@/lib/format";
-import { Alert, Badge, Card, CardTitle, EmptyState, LinkButton, PageHeader, Table, Td, Th } from "@/components/ui/primitives";
+import { Alert, Badge, Card, CardTitle, EmptyState, LinkButton, PageHeader } from "@/components/ui/primitives";
+import { FinanceTabs, ProfessionalsSubnav } from "@/components/finance/finance-tabs";
+import { FileLink, InvoiceRequestActions } from "@/components/finance/invoice-request-actions";
+import { RTable, RTd, RTh } from "@/components/finance/responsive-table";
 import { ActionButton } from "@/components/finance/action-button";
-import { GenerateRequestsForm, RejectInvoiceModal } from "@/components/finance/invoice-admin-forms";
+import { GenerateRequestsForm } from "@/components/finance/invoice-admin-forms";
 import { INVOICE_STATUS_META, describeRule, groupPreview } from "@/components/finance/logic";
-import { approveInvoice, closePeriod, generateRequests, payInvoice, rejectInvoice } from "../actions";
+import { closePeriod, generateRequests } from "../actions";
 
 export default async function InvoicePeriodPage({ params }: PageProps<"/finance/invoices/[periodId]">) {
   const user = await requireRole(MANAGER_ROLES);
@@ -26,7 +29,7 @@ export default async function InvoicePeriodPage({ params }: PageProps<"/finance/
     supabase
       .from("invoice_requests")
       .select(
-        `id, therapist_id, sessions_count, total_minutes, amount_cents, status, invoice_number, invoice_file_path,
+        `id, therapist_id, sessions_count, total_minutes, amount_cents, status, invoice_number, invoice_file_path, payment_receipt_path,
          submitted_at, rejection_reason, paid_at,
          therapy:therapies(name),
          items:invoice_request_items(appointment_id, pay_model, rate_cents, minutes, amount_cents,
@@ -47,7 +50,7 @@ export default async function InvoicePeriodPage({ params }: PageProps<"/finance/
   const requestsTotal = requests.reduce((sum, r) => sum + r.amount_cents, 0);
 
   return (
-    <div>
+    <div className="min-w-0">
       <PageHeader
         title={period.label}
         description={`${formatDate(period.starts_on)} a ${formatDate(period.ends_on)} · somente sessões concluídas`}
@@ -70,34 +73,36 @@ export default async function InvoicePeriodPage({ params }: PageProps<"/finance/
           </>
         }
       />
+      <FinanceTabs active="professionals" />
+      <ProfessionalsSubnav active="periods" />
       {!isAdmin && <Alert tone="blue">Visualização somente leitura.</Alert>}
 
       {isOpen && (
-        <Card className="mb-6">
+        <Card className="mb-6 min-w-0">
           <CardTitle>Prévia — sessões concluídas ainda não faturadas</CardTitle>
           {previewRes.error && <Alert tone="red">Não foi possível calcular a prévia.</Alert>}
           {preview.length === 0 ? (
             <p className="text-sm text-t2">Nenhuma sessão concluída pendente de faturamento neste período.</p>
           ) : (
-            <Table className="mb-4">
+            <RTable className="mb-4 p-0!">
               <thead>
                 <tr>
-                  <Th>Terapeuta</Th>
-                  <Th>Terapia</Th>
-                  <Th>Sessões</Th>
-                  <Th>Minutos</Th>
-                  <Th>Regra</Th>
-                  <Th>Total</Th>
+                  <RTh>Terapeuta</RTh>
+                  <RTh>Terapia</RTh>
+                  <RTh>Sessões</RTh>
+                  <RTh>Minutos</RTh>
+                  <RTh>Regra</RTh>
+                  <RTh>Total</RTh>
                 </tr>
               </thead>
               <tbody>
                 {preview.map((group) => (
                   <tr key={`${group.therapistId}-${group.therapyId}`} data-testid="preview-row">
-                    <Td className="font-semibold text-t1">{therapistName.get(group.therapistId) ?? "—"}</Td>
-                    <Td>{therapyName.get(group.therapyId) ?? "—"}</Td>
-                    <Td>{group.sessions}</Td>
-                    <Td>{group.minutes}</Td>
-                    <Td>
+                    <RTd className="font-semibold text-t1">{therapistName.get(group.therapistId) ?? "—"}</RTd>
+                    <RTd label="Terapia">{therapyName.get(group.therapyId) ?? "—"}</RTd>
+                    <RTd label="Sessões">{group.sessions}</RTd>
+                    <RTd label="Minutos">{group.minutes}</RTd>
+                    <RTd label="Regra">
                       {group.missingRate ? (
                         <span className="font-semibold text-danger">
                           Sem valor cadastrado ·{" "}
@@ -108,136 +113,96 @@ export default async function InvoicePeriodPage({ params }: PageProps<"/finance/
                       ) : (
                         group.rules.join(" · ")
                       )}
-                    </Td>
-                    <Td className="font-bold text-t1">{group.missingRate ? "—" : formatCents(group.totalCents)}</Td>
+                    </RTd>
+                    <RTd label="Total" className="font-bold text-t1">
+                      {group.missingRate ? "—" : formatCents(group.totalCents)}
+                    </RTd>
                   </tr>
                 ))}
               </tbody>
-            </Table>
+            </RTable>
           )}
           {isAdmin && <GenerateRequestsForm action={generateRequests} periodId={period.id} />}
         </Card>
       )}
 
-      <Card className="p-0">
-        <div className="flex items-center justify-between border-b border-line px-5 py-4">
+      <Card className="min-w-0 p-0">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-4 sm:px-5">
           <h2 className="text-sm font-bold text-t1">Solicitações de nota fiscal</h2>
           <span className="text-sm font-bold text-t1">Total: {formatCents(requestsTotal)}</span>
         </div>
         {requests.length === 0 ? (
           <EmptyState title="Nenhuma solicitação" description="Gere as solicitações para avisar os terapeutas." />
         ) : (
-          <Table>
+          <RTable>
             <thead>
               <tr>
-                <Th>Terapeuta</Th>
-                <Th>Terapia</Th>
-                <Th>Sessões</Th>
-                <Th>Minutos</Th>
-                <Th>Valor</Th>
-                <Th>Status</Th>
-                <Th>NF</Th>
-                <Th>Ações</Th>
+                <RTh>Terapeuta</RTh>
+                <RTh>Terapia</RTh>
+                <RTh>Sessões</RTh>
+                <RTh>Minutos</RTh>
+                <RTh>Valor</RTh>
+                <RTh>Status</RTh>
+                <RTh>NF</RTh>
+                <RTh>Ações</RTh>
               </tr>
             </thead>
-            {requests.map((request) => {
-              const meta = INVOICE_STATUS_META[request.status];
-              const items = [...request.items].sort((a, b) => (a.appointment?.starts_at ?? "").localeCompare(b.appointment?.starts_at ?? ""));
-              return (
-                <tbody key={request.id} data-testid="invoice-request-row">
-                  <tr>
-                    <Td className="font-semibold text-t1">{therapistName.get(request.therapist_id) ?? "—"}</Td>
-                    <Td>{request.therapy?.name ?? "—"}</Td>
-                    <Td>{request.sessions_count}</Td>
-                    <Td>{request.total_minutes}</Td>
-                    <Td className="font-bold text-t1">{formatCents(request.amount_cents)}</Td>
-                    <Td>
+            <tbody>
+              {requests.map((request) => {
+                const meta = INVOICE_STATUS_META[request.status];
+                const items = [...request.items].sort((a, b) => (a.appointment?.starts_at ?? "").localeCompare(b.appointment?.starts_at ?? ""));
+                return (
+                  <tr key={request.id} data-testid="invoice-request-row">
+                    <RTd className="font-semibold text-t1">
+                      <Link href={`/finance/professionals/${request.therapist_id}`} className="hover:text-primary">
+                        {therapistName.get(request.therapist_id) ?? "—"}
+                      </Link>
+                      <details className="mt-1 font-normal">
+                        <summary className="cursor-pointer text-xs font-semibold text-primary">Ver sessões ({items.length})</summary>
+                        <ul className="mt-2 space-y-1 text-xs text-t2">
+                          {items.map((item) => (
+                            <li key={item.appointment_id} className="border-t border-line-light pt-1">
+                              {item.appointment ? formatDateTime(item.appointment.starts_at) : "—"} · {item.appointment?.patient?.full_name ?? "—"} ·{" "}
+                              {item.minutes} min · {describeRule(item.pay_model, item.rate_cents)} ·{" "}
+                              <strong className="text-t1">{formatCents(item.amount_cents)}</strong>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    </RTd>
+                    <RTd label="Terapia">{request.therapy?.name ?? "—"}</RTd>
+                    <RTd label="Sessões">{request.sessions_count}</RTd>
+                    <RTd label="Minutos">{request.total_minutes}</RTd>
+                    <RTd label="Valor" className="font-bold text-t1">
+                      {formatCents(request.amount_cents)}
+                    </RTd>
+                    <RTd label="Status">
                       <Badge tone={meta.tone}>{meta.label}</Badge>
                       {request.status === "rejected" && request.rejection_reason && (
                         <div className="mt-1 max-w-48 text-[11px] text-danger">{request.rejection_reason}</div>
                       )}
                       {request.paid_at && <div className="mt-1 text-[11px] text-t3">pago em {formatDate(request.paid_at)}</div>}
-                    </Td>
-                    <Td>
+                      <FileLink path={request.payment_receipt_path} label="Comprovante" />
+                    </RTd>
+                    <RTd label="NF">
                       {request.invoice_number ? (
                         <div>
                           <div className="font-semibold text-t1">Nº {request.invoice_number}</div>
-                          {request.invoice_file_path && (
-                            <a
-                              href={`/files?path=${encodeURIComponent(request.invoice_file_path)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs font-semibold text-primary hover:underline"
-                            >
-                              Ver arquivo
-                            </a>
-                          )}
+                          <FileLink path={request.invoice_file_path} label="Ver arquivo" />
                           {request.submitted_at && <div className="text-[11px] text-t3">{formatDateTime(request.submitted_at)}</div>}
                         </div>
                       ) : (
                         <span className="text-xs text-t3">—</span>
                       )}
-                    </Td>
-                    <Td>
-                      {isAdmin && request.status === "submitted" && (
-                        <div className="flex gap-2">
-                          <ActionButton
-                            action={approveInvoice}
-                            fields={{ id: request.id, period_id: period.id }}
-                            label="Aprovar"
-                            variant="success"
-                            testId="approve-invoice"
-                          />
-                          <RejectInvoiceModal action={rejectInvoice} requestId={request.id} periodId={period.id} />
-                        </div>
-                      )}
-                      {isAdmin && request.status === "approved" && (
-                        <ActionButton
-                          action={payInvoice}
-                          fields={{ id: request.id, period_id: period.id }}
-                          label="Marcar paga"
-                          variant="primary"
-                          confirmMessage={`Confirmar o repasse de ${formatCents(request.amount_cents)}?`}
-                          testId="pay-invoice"
-                        />
-                      )}
-                    </Td>
+                    </RTd>
+                    <RTd label={isAdmin ? "Ações" : undefined}>
+                      <InvoiceRequestActions request={request} isAdmin={isAdmin} />
+                    </RTd>
                   </tr>
-                  <tr>
-                    <td colSpan={8} className="border-b border-line px-4 pb-3">
-                      <details>
-                        <summary className="cursor-pointer text-xs font-semibold text-primary">Ver sessões ({items.length})</summary>
-                        <table className="mt-2 w-full text-left text-xs">
-                          <thead className="text-t3">
-                            <tr>
-                              <th className="py-1 pr-4 font-semibold">Data</th>
-                              <th className="py-1 pr-4 font-semibold">Paciente</th>
-                              <th className="py-1 pr-4 font-semibold">Minutos</th>
-                              <th className="py-1 pr-4 font-semibold">Regra</th>
-                              <th className="py-1 font-semibold">Valor</th>
-                            </tr>
-                          </thead>
-                          <tbody className="text-t2">
-                            {items.map((item) => (
-                              <tr key={item.appointment_id} className="border-t border-line-light">
-                                <td className="py-1 pr-4">{item.appointment ? formatDateTime(item.appointment.starts_at) : "—"}</td>
-                                <td className="py-1 pr-4">{item.appointment?.patient?.full_name ?? "—"}</td>
-                                <td className="py-1 pr-4">{item.minutes}</td>
-                                <td className="py-1 pr-4">
-                                  {describeRule(item.pay_model, item.rate_cents)}
-                                </td>
-                                <td className="py-1 font-semibold text-t1">{formatCents(item.amount_cents)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </details>
-                    </td>
-                  </tr>
-                </tbody>
-              );
-            })}
-          </Table>
+                );
+              })}
+            </tbody>
+          </RTable>
         )}
       </Card>
     </div>
