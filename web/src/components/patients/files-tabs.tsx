@@ -9,6 +9,7 @@ import { UploadDocumentModal } from "@/components/documents/upload-document-moda
 import { createReport, submitReport, uploadReport } from "@/app/(app)/reports/actions";
 import { uploadDocument } from "@/app/(app)/documents/actions";
 import { fileHref } from "./session-record-utils";
+import { DOCUMENT_CATEGORY_LABELS } from "@/components/documents/document-utils";
 
 type Enums = Database["public"]["Enums"];
 
@@ -25,16 +26,6 @@ const REPORT_STATUS: Record<Enums["report_status"], { label: string; tone: "yell
   in_review: { label: "Em revisão", tone: "blue" },
   approved: { label: "Aprovado", tone: "green" },
   returned: { label: "Devolvido", tone: "red" },
-};
-
-const DOCUMENT_CATEGORY: Record<Enums["document_category"], string> = {
-  contract: "Contrato",
-  anamnesis: "Anamnese",
-  report: "Relatório",
-  medical: "Médico",
-  treatment_plan: "Plano de atendimento",
-  administrative: "Administrativo",
-  other: "Outro",
 };
 
 export async function ReportsTab({
@@ -176,7 +167,7 @@ export async function DocumentsTab({ patient, canUpload }: { patient: { id: stri
                     </a>
                   </Td>
                   <Td>
-                    <Badge tone="blue">{DOCUMENT_CATEGORY[document.category]}</Badge>
+                    <Badge tone="blue">{DOCUMENT_CATEGORY_LABELS[document.category]}</Badge>
                   </Td>
                   <Td>{document.visible_to_family ? <Badge tone="green">Visível</Badge> : <Badge tone="gray">Interno</Badge>}</Td>
                   <Td>{formatDate(document.created_at)}</Td>

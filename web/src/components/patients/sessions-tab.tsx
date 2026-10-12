@@ -5,6 +5,7 @@ import { AppointmentDetailButton } from "@/components/schedule/appointment-detai
 import { NewAppointment, type AssignmentOption } from "@/components/schedule/new-appointment";
 import { STATUS_META, type Option, type ScheduleAppointment, type ScheduleViewer } from "@/components/schedule/types";
 import { RegisterSession } from "./session-note-form";
+import { ResolveDispute } from "./resolve-dispute";
 import { SESSION_RECORD_SELECT, SessionRecordView, type SessionAttachment } from "./session-record-view";
 import { canRegisterSession, familyConfirmationMeta } from "./session-record-utils";
 
@@ -19,12 +20,14 @@ export async function SessionsTab({
   viewer,
   assignments,
   canSchedule,
+  canResolveDisputes,
 }: {
   patientId: string;
   patientName: string;
   viewer: ScheduleViewer;
   assignments: AssignmentOption[];
   canSchedule: boolean;
+  canResolveDisputes: boolean;
 }) {
   const supabase = await createClient();
   const now = new Date();
@@ -116,10 +119,18 @@ export async function SessionsTab({
                         </span>
                       </Badge>
                     )}
+                    {canResolveDisputes && row.status === "completed" && row.family_confirmation === "disputed" && (
+                      <ResolveDispute appointmentId={row.id} patientId={patientId} familyNote={row.family_confirmation_note} />
+                    )}
                     {canRegister && (
                       <RegisterSession
                         patientId={patientId}
-                        appointment={{ id: row.id, date: localDateKey(row.starts_at), label: `${formatDateTime(row.starts_at)} · ${appointment.therapyName}` }}
+                        appointment={{
+                          id: row.id,
+                          date: localDateKey(row.starts_at),
+                          label: `${formatDateTime(row.starts_at)} · ${appointment.therapyName}`,
+                          minutes: durationMinutes(row.starts_at, row.ends_at),
+                        }}
                       />
                     )}
                     <AppointmentDetailButton appointment={appointment} viewer={viewer} rooms={rooms} />

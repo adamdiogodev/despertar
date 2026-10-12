@@ -135,6 +135,7 @@ export default async function PatientPage({ params, searchParams }: PageProps<"/
           patientName={patient.full_name}
           viewer={{ userId: user.id, isStaff }}
           canSchedule={isStaff && patient.status !== "inactive"}
+          canResolveDisputes={isManager}
           assignments={activeAssignments.map((ca) => ({
             patientId: id,
             patientName: patient.full_name,

@@ -25,7 +25,7 @@ const REQUEST_STATUS = {
 } as const;
 
 const APPOINTMENT_FIELDS =
-  "id, patient_id, starts_at, ends_at, status, cancel_reason, family_confirmation, family_confirmation_note, rooms(name), therapies(name), therapists(profiles(full_name)), patients(full_name)";
+  "id, patient_id, starts_at, ends_at, status, cancel_reason, family_confirmation, family_confirmation_note, dispute_resolution_note, rooms(name), therapies(name), therapists(profiles(full_name)), patients(full_name)";
 
 type Session = {
   id: string;
@@ -35,6 +35,7 @@ type Session = {
   cancel_reason: string | null;
   family_confirmation: string | null;
   family_confirmation_note: string | null;
+  dispute_resolution_note: string | null;
   rooms: { name: string } | null;
   therapies: { name: string } | null;
   therapists: { profiles: { full_name: string } | null } | null;
@@ -243,7 +244,11 @@ export default async function PortalSessionsPage({ searchParams }: PageProps<"/p
                     {status ? <Badge tone={status.tone}>{status.label}</Badge> : <Badge tone="gray">Aguardando registro</Badge>}
                     {answer && session.family_confirmation && (
                       <Badge tone={answer.tone}>
-                        {session.family_confirmation === "confirmed" ? "Você confirmou" : `Você contestou: ${session.family_confirmation_note ?? ""}`}
+                        {session.family_confirmation === "confirmed"
+                          ? "Você confirmou"
+                          : session.family_confirmation === "resolved"
+                            ? `Resposta da clínica: ${session.dispute_resolution_note ?? ""}`
+                            : `Você contestou: ${session.family_confirmation_note ?? ""}`}
                       </Badge>
                     )}
                   </div>

@@ -15,7 +15,6 @@ import { closePeriod, generateRequests } from "../actions";
 
 export default async function InvoicePeriodPage({ params }: PageProps<"/finance/invoices/[periodId]">) {
   const user = await requireRole(MANAGER_ROLES);
-  const isAdmin = user.role === "admin";
   const { periodId } = await params;
   if (!z.string().guid().safeParse(periodId).success) notFound();
 
@@ -60,7 +59,7 @@ export default async function InvoicePeriodPage({ params }: PageProps<"/finance/
             <LinkButton href="/finance/invoices" variant="ghost" size="sm">
               ← Períodos
             </LinkButton>
-            {isAdmin && isOpen && (
+            {isOpen && (
               <ActionButton
                 action={closePeriod}
                 fields={{ period_id: period.id }}
@@ -75,7 +74,6 @@ export default async function InvoicePeriodPage({ params }: PageProps<"/finance/
       />
       <FinanceTabs active="professionals" />
       <ProfessionalsSubnav active="periods" />
-      {!isAdmin && <Alert tone="blue">Visualização somente leitura.</Alert>}
 
       {isOpen && (
         <Card className="mb-6 min-w-0">
@@ -122,7 +120,7 @@ export default async function InvoicePeriodPage({ params }: PageProps<"/finance/
               </tbody>
             </RTable>
           )}
-          {isAdmin && <GenerateRequestsForm action={generateRequests} periodId={period.id} />}
+          <GenerateRequestsForm action={generateRequests} periodId={period.id} />
         </Card>
       )}
 
@@ -195,8 +193,8 @@ export default async function InvoicePeriodPage({ params }: PageProps<"/finance/
                         <span className="text-xs text-t3">—</span>
                       )}
                     </RTd>
-                    <RTd label={isAdmin ? "Ações" : undefined}>
-                      <InvoiceRequestActions request={request} isAdmin={isAdmin} />
+                    <RTd label="Ações">
+                      <InvoiceRequestActions request={request} canManage={request.therapist_id !== user.id} />
                     </RTd>
                   </tr>
                 );

@@ -1,6 +1,6 @@
 // Pure helpers for session records (no server/client imports, so they are unit-testable).
 
-export type FamilyConfirmation = "confirmed" | "disputed" | null;
+export type FamilyConfirmation = "confirmed" | "disputed" | "resolved" | null;
 
 type Tone = "green" | "yellow" | "red";
 
@@ -13,6 +13,8 @@ export function familyConfirmationMeta(
   if (status !== "completed") return null;
   if (confirmation === "confirmed") return { label: "Confirmada pela família", tone: "green" };
   if (confirmation === "disputed") return { label: `Contestada${note ? `: ${note}` : ""}`, tone: "red" };
+  // A manager checked the dispute and kept the session.
+  if (confirmation === "resolved") return { label: "Contestação resolvida pela clínica", tone: "green" };
   return { label: "Aguardando de acordo", tone: "yellow" };
 }
 

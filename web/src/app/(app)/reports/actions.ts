@@ -170,5 +170,5 @@ export async function uploadReport(_prev: ActionState, formData: FormData): Prom
   const { error: submitError } = await supabase.from("reports").update({ status: "in_review" }).eq("id", report.id);
   refreshReports();
   if (submitError) return failure(`Relatório criado com o arquivo, mas não foi enviado para revisão: ${fromDb(submitError).message}`);
-  return success("Relatório enviado para revisão da coordenação.");
+  return success("Relatório enviado para revisão.");
 }

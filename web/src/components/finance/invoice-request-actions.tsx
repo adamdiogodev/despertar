@@ -7,9 +7,10 @@ import type { InvoiceStatus } from "./logic";
 
 type Request = { id: string; status: InvoiceStatus; amount_cents: number; payment_receipt_path: string | null };
 
-// Admin workflow for one invoice request: check the NF, pay (with receipt) or attach the receipt later.
-export function InvoiceRequestActions({ request, isAdmin }: { request: Request; isAdmin: boolean }) {
-  if (!isAdmin) return null;
+// Manager workflow for one invoice request: check the NF, pay (with receipt) or attach the receipt later.
+// Nobody acts on their own NF (the database enforces it too).
+export function InvoiceRequestActions({ request, canManage }: { request: Request; canManage: boolean }) {
+  if (!canManage) return null;
   if (request.status === "submitted") {
     return (
       <div className="flex flex-wrap gap-2">

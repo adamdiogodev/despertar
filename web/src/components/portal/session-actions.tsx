@@ -35,14 +35,17 @@ export function SessionActions(props: Props) {
 
   return (
     <div className="flex flex-wrap gap-2">
+      {/* While a reschedule request waits for the clinic, the session can't be changed again. */}
       {!props.hasPendingRequest && (
-        <Button size="sm" variant="outline" type="button" onClick={() => open("reschedule")} data-testid="reschedule-open">
-          Remarcar
-        </Button>
+        <>
+          <Button size="sm" variant="outline" type="button" onClick={() => open("reschedule")} data-testid="reschedule-open">
+            Remarcar
+          </Button>
+          <Button size="sm" variant="ghost" type="button" onClick={() => open("cancel")} data-testid="cancel-open">
+            Cancelar
+          </Button>
+        </>
       )}
-      <Button size="sm" variant="ghost" type="button" onClick={() => open("cancel")} data-testid="cancel-open">
-        Cancelar
-      </Button>
       <Modal title={title} open={mode !== null} onOpenChange={(value) => !value && setMode(null)}>
         {(close) =>
           !allowed ? (

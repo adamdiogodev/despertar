@@ -101,7 +101,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Pendentes" value={counts.pending} hint="Aguardando envio" tone="yellow" href={`/reports?${query({ tab: "pending" })}`} />
-        <StatCard label="Em revisão" value={counts.in_review} hint="Pela coordenação" tone="blue" href={`/reports?${query({ tab: "in_review" })}`} />
+        <StatCard label="Em revisão" value={counts.in_review} hint="Coordenação ou administração" tone="blue" href={`/reports?${query({ tab: "in_review" })}`} />
         <StatCard label="Aprovados" value={approvedThisQuarter} hint="Este trimestre" tone="green" href={`/reports?${query({ tab: "approved" })}`} />
         <StatCard label="Devolvidos" value={counts.returned} hint="Para correção" tone="red" href={`/reports?${query({ tab: "returned" })}`} />
       </div>

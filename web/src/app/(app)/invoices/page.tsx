@@ -46,7 +46,7 @@ export default async function MyInvoicesPage() {
 
   return (
     <div className="min-w-0">
-      <PageHeader title="Minhas notas fiscais" description="Solicitações de NF, conferência e histórico de pagamentos" />
+      <PageHeader title="Minhas Notas Fiscais" description="Solicitações de NF, conferência e histórico de pagamentos" />
       {requestsRes.error && <Alert tone="red">Não foi possível carregar suas solicitações.</Alert>}
       {pendingSubmission.length > 0 && (
         <Alert tone="yellow">

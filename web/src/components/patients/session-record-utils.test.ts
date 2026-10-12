@@ -11,6 +11,9 @@ describe("familyConfirmationMeta", () => {
     expect(familyConfirmationMeta("completed", "confirmed", null)).toEqual({ label: "Confirmada pela família", tone: "green" });
     expect(familyConfirmationMeta("completed", "disputed", "Não fomos")).toEqual({ label: "Contestada: Não fomos", tone: "red" });
   });
+  it("shows a dispute the clinic resolved by keeping the session", () => {
+    expect(familyConfirmationMeta("completed", "resolved", "Não fomos")).toEqual({ label: "Contestação resolvida pela clínica", tone: "green" });
+  });
 });
 
 describe("attachmentKind", () => {
