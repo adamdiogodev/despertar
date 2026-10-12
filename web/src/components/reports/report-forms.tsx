@@ -136,7 +136,7 @@ function UploadReportForm({ action, patient, chooseTherapist, accept, close }: {
       <Field label="Referência" name="referenceLabel" error={state.fieldErrors?.referenceLabel}>
         <Input name="referenceLabel" placeholder="Ex.: 2º Sem. 2026" required maxLength={80} />
       </Field>
-      <Field label="Arquivo do relatório" name="file" error={state.fieldErrors?.file} hint="PDF, Word ou imagem — até 20 MB. Vai para revisão da coordenação.">
+      <Field label="Arquivo do relatório" name="file" error={state.fieldErrors?.file} hint="PDF, Word ou imagem — até 20 MB. Vai para revisão da coordenação ou da administração.">
         <FileInput name="file" accept={accept} required />
       </Field>
       <div className="flex justify-end">

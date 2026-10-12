@@ -60,9 +60,9 @@ select throws_ok($$ select * from public.preview_invoice_items(current_setting('
 select throws_ok($$ insert into public.payout_periods (label, starts_on, ends_on) values ('x', current_date, current_date) $$,
   '42501', null, 'therapist cannot create payout periods');
 
-select pg_temp.act_as('u-coord');
+select pg_temp.act_as('u-ana');
 select throws_ok($$ select * from public.generate_invoice_requests(current_setting('test.period')::uuid) $$,
-  '42501', null, 'coordination cannot generate invoice requests');
+  '42501', null, 'therapist cannot generate invoice requests');
 
 select pg_temp.act_as('u-admin');
 select lives_ok($$ create temp table gen1 as select * from public.generate_invoice_requests(current_setting('test.period')::uuid) $$,

@@ -14,7 +14,6 @@ import { createManualRequest } from "../../invoices/actions";
 
 export default async function ProfessionalPayoutsPage({ params, searchParams }: PageProps<"/finance/professionals/[profileId]">) {
   const user = await requireRole(MANAGER_ROLES);
-  const isAdmin = user.role === "admin";
   const { profileId } = await params;
   if (!z.string().guid().safeParse(profileId).success) notFound();
   const query = await searchParams;
@@ -46,7 +45,7 @@ export default async function ProfessionalPayoutsPage({ params, searchParams }: 
         title={profile.full_name}
         description={`${ROLE_LABELS[profile.role]} · ${profile.email}${profile.active ? "" : " · inativo"}`}
         actions={
-          isAdmin && profile.active ? (
+          profile.active && profile.id !== user.id ? (
             <ManualInvoiceModal
               action={createManualRequest}
               payees={[{ id: profile.id, name: profile.full_name, roleLabel: ROLE_LABELS[profile.role] }]}
@@ -154,8 +153,8 @@ export default async function ProfessionalPayoutsPage({ params, searchParams }: 
                         <span className="text-xs text-t3">—</span>
                       )}
                     </RTd>
-                    <RTd label={isAdmin ? "Ações" : undefined}>
-                      <InvoiceRequestActions request={request} isAdmin={isAdmin} />
+                    <RTd label="Ações">
+                      <InvoiceRequestActions request={request} canManage={request.therapist_id !== user.id} />
                     </RTd>
                   </tr>
                 );

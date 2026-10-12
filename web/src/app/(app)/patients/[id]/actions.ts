@@ -85,6 +85,10 @@ const noteSchema = z.object({
   session_date: isoDate,
   appointment_id: z.union([z.string().guid(), z.literal("")]).optional(),
   content: z.string().trim().min(3, "Escreva o registro da sessão.").max(20000),
+  // Real duration of the linked session; it becomes ends_at, the base of hourly invoices.
+  minutes: z
+    .union([z.literal("").transform(() => null), z.coerce.number().int().min(10, "Mínimo de 10 minutos").max(480, "Máximo de 8 horas")])
+    .optional(),
 });
 
 export async function saveSessionNote(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -102,7 +106,7 @@ export async function saveSessionNote(_prev: ActionState, formData: FormData): P
   if (appointmentId) {
     const { data: appointment } = await supabase
       .from("appointments")
-      .select("id")
+      .select("id, starts_at")
       .eq("id", appointmentId)
       .eq("patient_id", patient_id)
       .eq("therapist_id", user.id)
@@ -110,6 +114,11 @@ export async function saveSessionNote(_prev: ActionState, formData: FormData): P
       .lte("starts_at", new Date().toISOString())
       .maybeSingle();
     if (!appointment) return failure("Selecione uma sessão sua com este paciente que já começou.");
+    if (parsed.data.minutes) {
+      const endsAt = new Date(new Date(appointment.starts_at).getTime() + parsed.data.minutes * 60000).toISOString();
+      const { error } = await supabase.from("appointments").update({ ends_at: endsAt }).eq("id", appointmentId);
+      if (error) return fromDb(error);
+    }
   }
 
   let noteId = id || null;
@@ -225,4 +234,34 @@ export async function saveTreatmentPlan(_prev: ActionState, formData: FormData):
 
   refresh(patient_id);
   return success(intent === "draft" ? "Rascunho salvo." : "Plano publicado. Orientações e materiais já estão visíveis para a família.");
+}
+
+// ---------------------------------------------------------------------------
+// Disputed sessions (admin + coordination): keep the session or cancel it
+// ---------------------------------------------------------------------------
+const disputeSchema = z.object({
+  appointment_id: z.string().guid(),
+  patient_id: z.string().guid(),
+  happened: z.enum(["yes", "no"], "Escolha a decisão."),
+  note: z.string().trim().min(3, "Explique a decisão.").max(1000),
+});
+
+export async function resolveSessionDispute(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireRole(MANAGER_ROLES);
+  const parsed = disputeSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fromZod(parsed.error);
+  const { appointment_id, patient_id, happened, note } = parsed.data;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("resolve_session_dispute", {
+    target_appointment: appointment_id,
+    happened: happened === "yes",
+    note,
+  });
+  if (error) return fromDb(error);
+
+  refresh(patient_id);
+  revalidatePath("/schedule");
+  revalidatePath("/portal/sessions");
+  return success(happened === "yes" ? "Sessão mantida. Ela volta a contar para a nota fiscal." : "Sessão cancelada.");
 }

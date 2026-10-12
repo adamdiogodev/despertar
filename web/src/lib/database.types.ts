@@ -45,19 +45,25 @@ isOneToOne: false
                   ]
                 },"appointments": {
                   Row: {
-                    "cancel_reason": string | null,"created_at": string,"created_by": string | null,"ends_at": string,"family_confirmation": string | null,"family_confirmation_note": string | null,"family_confirmed_at": string | null,"family_confirmed_by": string | null,"id": string,"notes": string | null,"patient_id": string,"room_id": string | null,"starts_at": string,"status": Database["public"]['Enums']["appointment_status"],"therapist_id": string,"therapy_id": string,"updated_at": string
+                    "cancel_reason": string | null,"created_at": string,"created_by": string | null,"dispute_resolution_note": string | null,"dispute_resolved_at": string | null,"dispute_resolved_by": string | null,"ends_at": string,"family_confirmation": string | null,"family_confirmation_note": string | null,"family_confirmed_at": string | null,"family_confirmed_by": string | null,"id": string,"notes": string | null,"patient_id": string,"room_id": string | null,"starts_at": string,"status": Database["public"]['Enums']["appointment_status"],"therapist_id": string,"therapy_id": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "cancel_reason"?: string | null,"created_at"?: string,"created_by"?: string | null,"ends_at": string,"family_confirmation"?: string | null,"family_confirmation_note"?: string | null,"family_confirmed_at"?: string | null,"family_confirmed_by"?: string | null,"id"?: string,"notes"?: string | null,"patient_id": string,"room_id"?: string | null,"starts_at": string,"status"?: Database["public"]['Enums']["appointment_status"],"therapist_id": string,"therapy_id": string,"updated_at"?: string
+                    "cancel_reason"?: string | null,"created_at"?: string,"created_by"?: string | null,"dispute_resolution_note"?: string | null,"dispute_resolved_at"?: string | null,"dispute_resolved_by"?: string | null,"ends_at": string,"family_confirmation"?: string | null,"family_confirmation_note"?: string | null,"family_confirmed_at"?: string | null,"family_confirmed_by"?: string | null,"id"?: string,"notes"?: string | null,"patient_id": string,"room_id"?: string | null,"starts_at": string,"status"?: Database["public"]['Enums']["appointment_status"],"therapist_id": string,"therapy_id": string,"updated_at"?: string
                   }
                   Update: {
-                    "cancel_reason"?: string | null,"created_at"?: string,"created_by"?: string | null,"ends_at"?: string,"family_confirmation"?: string | null,"family_confirmation_note"?: string | null,"family_confirmed_at"?: string | null,"family_confirmed_by"?: string | null,"id"?: string,"notes"?: string | null,"patient_id"?: string,"room_id"?: string | null,"starts_at"?: string,"status"?: Database["public"]['Enums']["appointment_status"],"therapist_id"?: string,"therapy_id"?: string,"updated_at"?: string
+                    "cancel_reason"?: string | null,"created_at"?: string,"created_by"?: string | null,"dispute_resolution_note"?: string | null,"dispute_resolved_at"?: string | null,"dispute_resolved_by"?: string | null,"ends_at"?: string,"family_confirmation"?: string | null,"family_confirmation_note"?: string | null,"family_confirmed_at"?: string | null,"family_confirmed_by"?: string | null,"id"?: string,"notes"?: string | null,"patient_id"?: string,"room_id"?: string | null,"starts_at"?: string,"status"?: Database["public"]['Enums']["appointment_status"],"therapist_id"?: string,"therapy_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
       foreignKeyName: "appointments_created_by_fkey"
       columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "appointments_dispute_resolved_by_fkey"
+      columns: ["dispute_resolved_by"]
 isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
@@ -999,6 +1005,9 @@ isOneToOne: false
       } },
 "request_reschedule":
 { Args: { "proposed_start": string,"request_reason": string,"target_appointment": string }; Returns: string
+                           },
+"resolve_session_dispute":
+{ Args: { "happened": boolean,"note": string,"target_appointment": string }; Returns: undefined
                            },
 "respond_session_confirmation":
 { Args: { "confirmed": boolean,"note"?: string,"target_appointment": string }; Returns: undefined

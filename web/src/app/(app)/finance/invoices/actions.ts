@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireRole } from "@/lib/auth";
+import { MANAGER_ROLES, requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { failure, fromDb, fromZod, success, type ActionState } from "@/lib/action-state";
 import { formatCents, parseMoneyToCents } from "@/lib/format";
@@ -10,7 +10,6 @@ import { removeUserFile, resolveUpload } from "@/lib/files";
 import { receiptFileError } from "@/components/finance/logic";
 
 // Only the admin writes payout periods and reviews invoices (RLS and RPCs agree).
-const ADMIN = ["admin"] as const;
 
 const dateField = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe a data.");
 const periodSchema = z
@@ -22,7 +21,7 @@ const periodSchema = z
   .refine((v) => v.ends_on >= v.starts_on, { path: ["ends_on"], message: "O fim deve ser igual ou posterior ao início." });
 
 export async function createPeriod(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const user = await requireRole([...ADMIN]);
+  const user = await requireRole(MANAGER_ROLES);
   const parsed = periodSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZod(parsed.error);
 
@@ -38,7 +37,7 @@ const periodIdSchema = z.object({ period_id: z.string().guid() });
 export type GenerateState = ActionState & { lines?: { text: string; missing: boolean }[] };
 
 export async function generateRequests(_prev: GenerateState, formData: FormData): Promise<GenerateState> {
-  await requireRole([...ADMIN]);
+  await requireRole(MANAGER_ROLES);
   const parsed = periodIdSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return failure("Período inválido.");
 
@@ -80,7 +79,7 @@ function revalidatePayouts() {
 }
 
 export async function approveInvoice(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireRole([...ADMIN]);
+  await requireRole(MANAGER_ROLES);
   const parsed = requestSchema.safeParse({ id: formData.get("id") });
   if (!parsed.success) return failure("Solicitação inválida.");
   const supabase = await createClient();
@@ -93,7 +92,7 @@ export async function approveInvoice(_prev: ActionState, formData: FormData): Pr
 const rejectSchema = requestSchema.extend({ reason: z.string().trim().min(3, "Informe o motivo da recusa.").max(500) });
 
 export async function rejectInvoice(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireRole([...ADMIN]);
+  await requireRole(MANAGER_ROLES);
   const parsed = rejectSchema.safeParse({ id: formData.get("id"), reason: formData.get("reason") });
   if (!parsed.success) return fromZod(parsed.error);
   const supabase = await createClient();
@@ -121,7 +120,7 @@ async function resolveReceipt(userId: string, formData: FormData) {
 
 // Marks an approved invoice as paid, optionally with the transfer receipt.
 export async function payInvoice(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const user = await requireRole([...ADMIN]);
+  const user = await requireRole(MANAGER_ROLES);
   const parsed = requestSchema.safeParse({ id: formData.get("id") });
   if (!parsed.success) return failure("Solicitação inválida.");
 
@@ -143,7 +142,7 @@ export async function payInvoice(_prev: ActionState, formData: FormData): Promis
 }
 
 export async function attachPayoutReceipt(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const user = await requireRole([...ADMIN]);
+  const user = await requireRole(MANAGER_ROLES);
   const parsed = requestSchema.safeParse({ id: formData.get("id") });
   if (!parsed.success) return failure("Solicitação inválida.");
 
@@ -167,7 +166,7 @@ const manualSchema = z.object({
 });
 
 export async function createManualRequest(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireRole([...ADMIN]);
+  await requireRole(MANAGER_ROLES);
   const parsed = manualSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZod(parsed.error);
   const amountCents = parseMoneyToCents(parsed.data.amount);
@@ -185,7 +184,7 @@ export async function createManualRequest(_prev: ActionState, formData: FormData
 }
 
 export async function closePeriod(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireRole([...ADMIN]);
+  await requireRole(MANAGER_ROLES);
   const parsed = periodIdSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return failure("Período inválido.");
   const supabase = await createClient();

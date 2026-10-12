@@ -18,7 +18,21 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
     if (!error) return NextResponse.redirect(new URL(next, request.url));
+    return NextResponse.redirect(new URL("/auth/forgot-password?expired=1", request.url));
   }
 
-  return NextResponse.redirect(new URL("/auth/forgot-password?expired=1", request.url));
+  // PKCE links (?code=...) from Supabase's default flow.
+  const code = params.get("code");
+  if (code) {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error) return NextResponse.redirect(new URL(next, request.url));
+    return NextResponse.redirect(new URL("/auth/forgot-password?expired=1", request.url));
+  }
+
+  // Links built from Supabase's default templates carry the session in the URL
+  // fragment, which only the browser can read; it survives this redirect.
+  const callback = new URL("/auth/callback", request.url);
+  callback.searchParams.set("next", next);
+  return NextResponse.redirect(callback);
 }

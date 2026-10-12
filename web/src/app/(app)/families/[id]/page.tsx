@@ -10,7 +10,7 @@ import { AddGuardianButton, FamilyEditForm, GuardianActions, InternalNotesForm, 
 
 export const metadata = { title: "Família — Sistema Despertar" };
 
-const PATIENT_STATUS = { active: "Ativo", pending: "Aguardando", inactive: "Inativo" } as const;
+const PATIENT_STATUS = { active: "Ativo", pending: "Pendente", inactive: "Inativo" } as const;
 
 export default async function FamilyDetailPage({ params, searchParams }: PageProps<"/families/[id]">) {
   const user = await requireRole(TEAM_ROLES);

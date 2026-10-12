@@ -2,15 +2,14 @@ import Link from "next/link";
 import { MANAGER_ROLES, requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatCents, formatDate, localDateKey } from "@/lib/format";
-import { Alert, Badge, Card, EmptyState, LinkButton, PageHeader } from "@/components/ui/primitives";
+import { Badge, Card, EmptyState, LinkButton, PageHeader } from "@/components/ui/primitives";
 import { FinanceTabs, ProfessionalsSubnav } from "@/components/finance/finance-tabs";
 import { RTable, RTd, RTh } from "@/components/finance/responsive-table";
 import { NewPeriodModal } from "@/components/finance/invoice-admin-forms";
 import { createPeriod } from "./actions";
 
 export default async function InvoicePeriodsPage() {
-  const user = await requireRole(MANAGER_ROLES);
-  const isAdmin = user.role === "admin";
+  await requireRole(MANAGER_ROLES);
   const supabase = await createClient();
   const [periodsRes, requestsRes] = await Promise.all([
     supabase.from("payout_periods").select("id, label, starts_on, ends_on, status").order("starts_on", { ascending: false }),
@@ -36,11 +35,10 @@ export default async function InvoicePeriodsPage() {
       <PageHeader
         title="Financeiro"
         description="NF por período de sessões: fechamento, solicitações e repasses"
-        actions={isAdmin ? <NewPeriodModal action={createPeriod} defaultStart={`${today.slice(0, 7)}-01`} defaultEnd={today} /> : undefined}
+        actions={<NewPeriodModal action={createPeriod} defaultStart={`${today.slice(0, 7)}-01`} defaultEnd={today} />}
       />
       <FinanceTabs active="professionals" />
       <ProfessionalsSubnav active="periods" />
-      {!isAdmin && <Alert tone="blue">Visualização somente leitura. Apenas o administrador gera e confere as notas.</Alert>}
 
       <Card className="min-w-0 p-0">
         {periods.length === 0 ? (

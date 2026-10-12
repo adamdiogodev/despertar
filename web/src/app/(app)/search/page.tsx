@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ROLE_LABELS, requireUser, type AppRole, type CurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui/primitives";
+import { DOCUMENT_CATEGORY_LABELS } from "@/components/documents/document-utils";
 
 type Result = { kind: string; id: string; title: string; subtitle: string };
 
@@ -25,15 +26,6 @@ const GROUP_LABELS: Record<string, string> = {
   report: "Relatórios",
 };
 
-const DOCUMENT_CATEGORIES: Record<string, string> = {
-  contract: "Contrato",
-  anamnesis: "Anamnese",
-  report: "Relatório",
-  medical: "Laudo / médico",
-  treatment_plan: "Plano de atendimento",
-  administrative: "Administrativo",
-  other: "Outro",
-};
 
 const REPORT_STATUS: Record<string, string> = {
   pending: "Pendente",
@@ -52,7 +44,8 @@ function hrefFor(result: Result, user: CurrentUser): string {
     case "guardian":
       return `/families/${result.id}`;
     case "therapist":
-      return `/therapists/${result.id}`;
+      // Reception has no therapists page; it opens the therapist's schedule instead.
+      return user.role === "reception" ? `/schedule?therapist=${result.id}` : `/therapists/${result.id}`;
     case "staff":
       return user.role === "admin" ? "/settings?tab=users" : "/messages";
     case "document":
@@ -67,7 +60,7 @@ function hrefFor(result: Result, user: CurrentUser): string {
 function subtitleFor(result: Result): string {
   if (result.kind === "guardian") return "Responsável — abrir família";
   if (result.kind === "therapist" || result.kind === "staff") return ROLE_LABELS[result.subtitle as AppRole] ?? result.subtitle;
-  if (result.kind === "document") return DOCUMENT_CATEGORIES[result.subtitle] ?? result.subtitle;
+  if (result.kind === "document") return DOCUMENT_CATEGORY_LABELS[result.subtitle as keyof typeof DOCUMENT_CATEGORY_LABELS] ?? result.subtitle;
   if (result.kind === "report") return REPORT_STATUS[result.subtitle] ?? result.subtitle;
   if (result.kind === "patient") return result.subtitle;
   return result.subtitle;

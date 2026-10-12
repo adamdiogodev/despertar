@@ -8,7 +8,7 @@ export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
   anamnesis: "Anamnese",
   report: "Relatório",
   medical: "Laudo / médico",
-  treatment_plan: "Plano terapêutico",
+  treatment_plan: "Plano de atendimento",
   administrative: "Administrativo",
   other: "Outro",
 };

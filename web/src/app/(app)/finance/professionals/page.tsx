@@ -16,7 +16,6 @@ const PENDING_ORDER: InvoiceStatus[] = ["submitted", "approved", "rejected", "re
 
 export default async function ProfessionalsFinancePage({ searchParams }: PageProps<"/finance/professionals">) {
   const user = await requireRole(MANAGER_ROLES);
-  const isAdmin = user.role === "admin";
   const params = await searchParams;
   const today = localDateKey(new Date());
   const year = typeof params.year === "string" && /^\d{4}$/.test(params.year) ? params.year : today.slice(0, 4);
@@ -53,7 +52,7 @@ export default async function ProfessionalsFinancePage({ searchParams }: PagePro
   const paidInRange = [...totals.values()].reduce((s, t) => s + t.paidInRangeCents, 0);
   // Every active team member, plus inactive ones that still have payout history.
   const listed = profiles.filter((p) => p.active || totals.has(p.id));
-  const payees = profiles.filter((p) => p.active).map((p) => ({ id: p.id, name: p.full_name, roleLabel: ROLE_LABELS[p.role] }));
+  const payees = profiles.filter((p) => p.active && p.id !== user.id).map((p) => ({ id: p.id, name: p.full_name, roleLabel: ROLE_LABELS[p.role] }));
   const years = Array.from({ length: 4 }, (_, i) => String(Number(today.slice(0, 4)) - i));
 
   return (
@@ -61,11 +60,10 @@ export default async function ProfessionalsFinancePage({ searchParams }: PagePro
       <PageHeader
         title="Financeiro"
         description="Cobranças às famílias e repasses à equipe"
-        actions={isAdmin ? <ManualInvoiceModal action={createManualRequest} payees={payees} /> : undefined}
+        actions={<ManualInvoiceModal action={createManualRequest} payees={payees} />}
       />
       <FinanceTabs active="professionals" />
       <ProfessionalsSubnav active="overview" />
-      {!isAdmin && <Alert tone="blue">Visualização somente leitura. Apenas o administrador solicita, confere e paga as notas.</Alert>}
       {requestsRes.error && <Alert tone="red">Não foi possível carregar as solicitações.</Alert>}
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -130,8 +128,8 @@ export default async function ProfessionalsFinancePage({ searchParams }: PagePro
                         <span className="text-xs text-t3">—</span>
                       )}
                     </RTd>
-                    <RTd label={isAdmin ? "Ações" : undefined}>
-                      <InvoiceRequestActions request={request} isAdmin={isAdmin} />
+                    <RTd label="Ações">
+                      <InvoiceRequestActions request={request} canManage={request.therapist_id !== user.id} />
                     </RTd>
                   </tr>
                 );

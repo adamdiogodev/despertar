@@ -13,7 +13,7 @@ export type CompletedSessionOption = { id: string; label: string };
 
 type NoteValues = { id: string; session_date: string; appointment_id: string | null; content: string };
 
-type FixedAppointment = { id: string; date: string; label: string };
+type FixedAppointment = { id: string; date: string; label: string; minutes: number };
 
 export function SessionNoteForm({
   patientId,
@@ -58,6 +58,9 @@ export function SessionNoteForm({
           <p className="mb-4 text-sm text-t2">
             Sessão: <strong className="text-t1">{fixedAppointment.label}</strong>. Ao salvar, a sessão fica como concluída.
           </p>
+          <Field label="Duração real (minutos) *" name="minutes" error={errors.minutes} hint="Base do cálculo por hora da nota fiscal.">
+            <Input name="minutes" type="number" min={10} max={480} defaultValue={fixedAppointment.minutes} required />
+          </Field>
         </>
       ) : (
         <div className="grid gap-x-4 sm:grid-cols-2">
@@ -73,6 +76,9 @@ export function SessionNoteForm({
                 </option>
               ))}
             </Select>
+          </Field>
+          <Field label="Duração real (minutos)" name="minutes" error={errors.minutes} hint="Só para sessão vinculada. Em branco, mantém a agendada.">
+            <Input name="minutes" type="number" min={10} max={480} />
           </Field>
         </div>
       )}

@@ -10,7 +10,7 @@ import { changeMyPassword, requestDataUpdate, updateMyPhone } from "./actions";
 const REQUEST_STATUS = {
   open: { label: "Aguardando", tone: "yellow" },
   answered: { label: "Respondida", tone: "green" },
-  closed: { label: "Concluída", tone: "gray" },
+  closed: { label: "Encerrada", tone: "gray" },
 } as const;
 
 export default async function PortalProfilePage({ searchParams }: PageProps<"/portal/profile">) {
@@ -43,7 +43,7 @@ export default async function PortalProfilePage({ searchParams }: PageProps<"/po
 
   return (
     <div>
-      <PageHeader title="Meu perfil" description="Seus dados, das crianças e da equipe que cuida delas." />
+      <PageHeader title="Meu Perfil" description="Seus dados, das crianças e da equipe que cuida delas." />
       <ChildSwitcher items={children} selectedId={selectedId} basePath="/portal/profile" />
 
       <div className="grid gap-6 lg:grid-cols-2">
