@@ -67,11 +67,11 @@ select is((select count(*)::int from storage.objects where name = md5('g-carla@d
   'therapist cannot read family receipts');
 
 -- ---------------------------------------------------------------------------
--- Ad hoc invoice requests: admin only, active team members only
+-- Ad hoc invoice requests: admin and coordination only, active team members only
 -- ---------------------------------------------------------------------------
-select pg_temp.act_as('u-coord');
-select throws_ok($$ select public.create_manual_invoice_request(md5('u-reception')::uuid, 30000, 'Plantão') $$,
-  '42501', null, 'coordination cannot request invoices');
+select pg_temp.act_as('u-reception');
+select throws_ok($$ select public.create_manual_invoice_request(md5('u-ana')::uuid, 30000, 'Plantão') $$,
+  '42501', null, 'reception cannot request invoices');
 
 select pg_temp.act_as('u-admin');
 select throws_ok($$ select public.create_manual_invoice_request(md5('g-carla@despertar.local')::uuid, 30000, 'x') $$,
