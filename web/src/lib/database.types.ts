@@ -45,14 +45,14 @@ isOneToOne: false
                   ]
                 },"appointments": {
                   Row: {
-                    "cancel_reason": string | null,"created_at": string,"created_by": string | null,"dispute_resolution_note": string | null,"dispute_resolved_at": string | null,"dispute_resolved_by": string | null,"ends_at": string,"family_confirmation": string | null,"family_confirmation_note": string | null,"family_confirmed_at": string | null,"family_confirmed_by": string | null,"id": string,"notes": string | null,"patient_id": string,"room_id": string | null,"starts_at": string,"status": Database["public"]['Enums']["appointment_status"],"therapist_id": string,"therapy_id": string,"updated_at": string
+                    "cancel_reason": string | null,"created_at": string,"created_by": string | null,"dispute_resolution_note": string | null,"dispute_resolved_at": string | null,"dispute_resolved_by": string | null,"ends_at": string,"family_confirmation": string | null,"family_confirmation_note": string | null,"family_confirmed_at": string | null,"family_confirmed_by": string | null,"id": string,"notes": string | null,"patient_id": string,"recurring_schedule_id": string | null,"room_id": string | null,"starts_at": string,"status": Database["public"]['Enums']["appointment_status"],"therapist_id": string,"therapy_id": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "cancel_reason"?: string | null,"created_at"?: string,"created_by"?: string | null,"dispute_resolution_note"?: string | null,"dispute_resolved_at"?: string | null,"dispute_resolved_by"?: string | null,"ends_at": string,"family_confirmation"?: string | null,"family_confirmation_note"?: string | null,"family_confirmed_at"?: string | null,"family_confirmed_by"?: string | null,"id"?: string,"notes"?: string | null,"patient_id": string,"room_id"?: string | null,"starts_at": string,"status"?: Database["public"]['Enums']["appointment_status"],"therapist_id": string,"therapy_id": string,"updated_at"?: string
+                    "cancel_reason"?: string | null,"created_at"?: string,"created_by"?: string | null,"dispute_resolution_note"?: string | null,"dispute_resolved_at"?: string | null,"dispute_resolved_by"?: string | null,"ends_at": string,"family_confirmation"?: string | null,"family_confirmation_note"?: string | null,"family_confirmed_at"?: string | null,"family_confirmed_by"?: string | null,"id"?: string,"notes"?: string | null,"patient_id": string,"recurring_schedule_id"?: string | null,"room_id"?: string | null,"starts_at": string,"status"?: Database["public"]['Enums']["appointment_status"],"therapist_id": string,"therapy_id": string,"updated_at"?: string
                   }
                   Update: {
-                    "cancel_reason"?: string | null,"created_at"?: string,"created_by"?: string | null,"dispute_resolution_note"?: string | null,"dispute_resolved_at"?: string | null,"dispute_resolved_by"?: string | null,"ends_at"?: string,"family_confirmation"?: string | null,"family_confirmation_note"?: string | null,"family_confirmed_at"?: string | null,"family_confirmed_by"?: string | null,"id"?: string,"notes"?: string | null,"patient_id"?: string,"room_id"?: string | null,"starts_at"?: string,"status"?: Database["public"]['Enums']["appointment_status"],"therapist_id"?: string,"therapy_id"?: string,"updated_at"?: string
+                    "cancel_reason"?: string | null,"created_at"?: string,"created_by"?: string | null,"dispute_resolution_note"?: string | null,"dispute_resolved_at"?: string | null,"dispute_resolved_by"?: string | null,"ends_at"?: string,"family_confirmation"?: string | null,"family_confirmation_note"?: string | null,"family_confirmed_at"?: string | null,"family_confirmed_by"?: string | null,"id"?: string,"notes"?: string | null,"patient_id"?: string,"recurring_schedule_id"?: string | null,"room_id"?: string | null,"starts_at"?: string,"status"?: Database["public"]['Enums']["appointment_status"],"therapist_id"?: string,"therapy_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -78,6 +78,12 @@ isOneToOne: false
       columns: ["patient_id"]
 isOneToOne: false
       referencedRelation: "patients"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "appointments_recurring_schedule_id_fkey"
+      columns: ["recurring_schedule_id"]
+isOneToOne: false
+      referencedRelation: "recurring_schedules"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "appointments_room_id_fkey"
@@ -563,6 +569,50 @@ isOneToOne: true
                   Relationships: [
                     
                   ]
+                },"recurring_schedules": {
+                  Row: {
+                    "created_at": string,"created_by": string | null,"duration_minutes": number,"ends_on": string | null,"generated_until": string | null,"id": string,"notes": string | null,"patient_id": string,"room_id": string | null,"start_time": string,"starts_on": string,"therapist_id": string,"therapy_id": string,"updated_at": string,"weekdays": (number)[],"recurring_schedule_label": string | null
+                  }
+                  ComputedFields: "recurring_schedule_label"
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string | null,"duration_minutes": number,"ends_on"?: string | null,"generated_until"?: string | null,"id"?: string,"notes"?: string | null,"patient_id": string,"room_id"?: string | null,"start_time": string,"starts_on": string,"therapist_id": string,"therapy_id": string,"updated_at"?: string,"weekdays": (number)[]
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string | null,"duration_minutes"?: number,"ends_on"?: string | null,"generated_until"?: string | null,"id"?: string,"notes"?: string | null,"patient_id"?: string,"room_id"?: string | null,"start_time"?: string,"starts_on"?: string,"therapist_id"?: string,"therapy_id"?: string,"updated_at"?: string,"weekdays"?: (number)[]
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "recurring_schedules_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "recurring_schedules_patient_id_fkey"
+      columns: ["patient_id"]
+isOneToOne: false
+      referencedRelation: "patients"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "recurring_schedules_room_id_fkey"
+      columns: ["room_id"]
+isOneToOne: false
+      referencedRelation: "rooms"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "recurring_schedules_therapist_id_fkey"
+      columns: ["therapist_id"]
+isOneToOne: false
+      referencedRelation: "therapists"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "recurring_schedules_therapy_id_fkey"
+      columns: ["therapy_id"]
+isOneToOne: false
+      referencedRelation: "therapies"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"reports": {
                   Row: {
                     "created_at": string,"created_by": string | null,"due_date": string | null,"file_path": string | null,"id": string,"patient_id": string,"reference_label": string,"report_type": Database["public"]['Enums']["report_type"],"return_reason": string | null,"reviewed_at": string | null,"reviewed_by": string | null,"status": Database["public"]['Enums']["report_status"],"submitted_at": string | null,"therapist_id": string
@@ -885,11 +935,22 @@ isOneToOne: false
 "create_manual_invoice_request":
 { Args: { "amount": number,"payee": string,"request_description": string }; Returns: string
                            },
+"create_recurring_schedule":
+{ Args: { "days": (number)[],"first_day": string,"last_day"?: string,"minutes": number,"schedule_notes"?: string,"start_at": string,"target_patient": string,"target_room"?: string,"target_therapist": string,"target_therapy": string }; Returns: {
+              "created": boolean,"reason": string,"session_date": string
+            }[]
+                           },
 "current_app_role":
 { Args: Record<PropertyKey, never>; Returns: Database["public"]['Enums']["app_role"]
                            },
 "decide_reschedule":
 { Args: { "approve": boolean,"note"?: string,"target_request": string }; Returns: undefined
+                           },
+"end_recurring_schedule":
+{ Args: { "last_day": string,"target": string }; Returns: number
+                           },
+"extend_recurring_schedules":
+{ Args: Record<PropertyKey, never>; Returns: undefined
                            },
 "format_brl":
 { Args: { "cents": number }; Returns: string
@@ -964,6 +1025,11 @@ isOneToOne: false
 "mark_invoice_paid":
 { Args: { "receipt_path"?: string,"target_request": string }; Returns: undefined
                            },
+"materialize_recurring_schedule":
+{ Args: { "horizon": string,"target": string }; Returns: {
+              "created": boolean,"reason": string,"session_date": string
+            }[]
+                           },
 "notify":
 { Args: { "notification_body"?: string,"notification_kind": string,"notification_link"?: string,"notification_title": string,"target": string }; Returns: undefined
                            },
@@ -1003,6 +1069,12 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"recurring_horizon":
+{ Args: Record<PropertyKey, never>; Returns: string
+                           },
+"recurring_schedule_label":
+{ Args: { "rule": Omit<Database["public"]['Tables']["recurring_schedules"]['Row'], Database["public"]['Tables']["recurring_schedules"]['ComputedFields']> }; Returns: string
+                           },
 "request_reschedule":
 { Args: { "proposed_start": string,"request_reason": string,"target_appointment": string }; Returns: string
                            },

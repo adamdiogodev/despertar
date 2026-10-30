@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MANAGER_ROLES, requireRole } from "@/lib/auth";
+import { MANAGER_ROLES, STAFF_ROLES, requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatCents, formatDate, localDateKey } from "@/lib/format";
 import { Alert, Avatar, Badge, Card, CardTitle, EmptyState, InfoRow, PageHeader, Table, Td, Th } from "@/components/ui/primitives";
+import { NewAppointment } from "@/components/schedule/new-appointment";
+import { loadSchedulingOptions } from "@/components/schedule/scheduling-options";
 import { OPEN_REPORT_STATUSES, PAY_MODEL_LABELS, REPORT_TYPE_LABELS } from "@/components/admin/labels";
 import { AddRateForm, EditTherapistForm } from "../therapist-forms";
 
@@ -31,7 +33,7 @@ export default async function TherapistDetailPage({ params, searchParams }: Page
     ? await Promise.all([
         supabase
           .from("care_assignments")
-          .select("id, frequency, starts_on, patients(id, full_name), therapies(name)")
+          .select("id, frequency, starts_on, therapy_id, patients(id, full_name), therapies(name)")
           .eq("therapist_id", id)
           .lte("starts_on", today)
           .or(`ends_on.is.null,ends_on.gte.${today}`)
@@ -50,6 +52,7 @@ export default async function TherapistDetailPage({ params, searchParams }: Page
         isAdmin ? supabase.from("therapies").select("id, name").eq("active", true).order("name") : Promise.resolve({ data: [] }),
       ])
     : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
+  const scheduling = canSeeDetails && STAFF_ROLES.includes(user.role) ? await loadSchedulingOptions({ therapistId: id }) : null;
 
   // The rate in force today per therapy is the latest one already started.
   const currentRateIds = new Set<string>();
@@ -122,6 +125,7 @@ export default async function TherapistDetailPage({ params, searchParams }: Page
                       <Th>Terapia</Th>
                       <Th>Frequência</Th>
                       <Th>Desde</Th>
+                      {scheduling && <Th />}
                     </tr>
                   </thead>
                   <tbody>
@@ -137,6 +141,22 @@ export default async function TherapistDetailPage({ params, searchParams }: Page
                         <Td>{assignment.therapies?.name}</Td>
                         <Td>{assignment.frequency ?? "—"}</Td>
                         <Td>{formatDate(assignment.starts_on)}</Td>
+                        {scheduling && (
+                          <Td>
+                            {assignment.patients &&
+                              scheduling.assignments.some((item) => item.patientId === assignment.patients?.id && item.therapyId === assignment.therapy_id) && (
+                                <NewAppointment
+                                  trigger="📅 Agendar"
+                                  triggerVariant="ghost"
+                                  assignments={scheduling.assignments}
+                                  rooms={scheduling.rooms}
+                                  defaultDate={today}
+                                  defaultPatientId={assignment.patients.id}
+                                  defaultAssignment={`${id}:${assignment.therapy_id}`}
+                                />
+                              )}
+                          </Td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

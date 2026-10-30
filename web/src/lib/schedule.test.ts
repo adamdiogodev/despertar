@@ -10,6 +10,8 @@ import {
   weekLabel,
   weekRange,
   weekStart,
+  weekdayOf,
+  weekdaysLabel,
   weeklyOccurrences,
 } from "./schedule";
 
@@ -112,5 +114,24 @@ describe("weeklyOccurrences", () => {
   });
   it("returns a single occurrence when not recurring", () => {
     expect(weeklyOccurrences("2026-10-26", "08:00", 50, 0)).toHaveLength(1);
+  });
+});
+
+describe("weekdayOf", () => {
+  it("uses 0 = Sunday like Postgres extract(dow)", () => {
+    expect(weekdayOf("2026-10-25")).toBe(0); // Sunday
+    expect(weekdayOf("2026-10-27")).toBe(2); // Tuesday
+    expect(weekdayOf("2026-10-31")).toBe(6); // Saturday
+  });
+});
+
+describe("weekdaysLabel", () => {
+  it("sorts, deduplicates and abbreviates", () => {
+    expect(weekdaysLabel([4, 2, 2])).toBe("ter, qui");
+    expect(weekdaysLabel([6, 0, 1])).toBe("dom, seg, sáb");
+  });
+
+  it("is empty without days", () => {
+    expect(weekdaysLabel([])).toBe("");
   });
 });

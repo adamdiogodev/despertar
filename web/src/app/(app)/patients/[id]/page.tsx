@@ -8,6 +8,8 @@ import { STATUS_META, isAssignmentActive } from "@/components/patients/patient-h
 import { PatientForm } from "@/components/patients/patient-form";
 import { CareTab } from "@/components/patients/care-tab";
 import { SessionsTab } from "@/components/patients/sessions-tab";
+import { NewAppointment } from "@/components/schedule/new-appointment";
+import { loadSchedulingOptions } from "@/components/schedule/scheduling-options";
 import { RecordTab } from "@/components/patients/record-tab";
 import { PlanTab } from "@/components/patients/plan-tab";
 import { ReportsTab, DocumentsTab } from "@/components/patients/files-tabs";
@@ -61,6 +63,8 @@ export default async function PatientPage({ params, searchParams }: PageProps<"/
   const age = ageFrom(patient.birth_date);
   const status = STATUS_META[patient.status];
   const therapistColor = activeAssignments[0]?.therapist?.color ?? undefined;
+  const canSchedule = isStaff && patient.status !== "inactive";
+  const scheduling = canSchedule ? await loadSchedulingOptions({ patientIds: [id] }) : null;
 
   return (
     <>
@@ -86,6 +90,15 @@ export default async function PatientPage({ params, searchParams }: PageProps<"/
             <span>Convênio: {patient.insurance_name}</span>
           </div>
         </div>
+        {scheduling && scheduling.assignments.length > 0 && (
+          <NewAppointment
+            trigger="+ Agendar sessão"
+            assignments={scheduling.assignments}
+            rooms={scheduling.rooms}
+            defaultDate={today}
+            defaultPatientId={id}
+          />
+        )}
       </Card>
 
       <Tabs active={active} tabs={allowed.map((key) => ({ key, label: TAB_LABELS[key], href: `/patients/${id}?tab=${key}` }))} />
@@ -128,22 +141,16 @@ export default async function PatientPage({ params, searchParams }: PageProps<"/
           </Card>
         ))}
 
-      {active === "care" && <CareTab patientId={id} assignments={patient.care_assignments} canManage={isManager} today={today} />}
+      {active === "care" && (
+        <CareTab patientId={id} assignments={patient.care_assignments} canManage={isManager} today={today} scheduling={scheduling} />
+      )}
       {active === "sessions" && (
         <SessionsTab
           patientId={id}
           patientName={patient.full_name}
           viewer={{ userId: user.id, isStaff }}
-          canSchedule={isStaff && patient.status !== "inactive"}
+          canSchedule={canSchedule}
           canResolveDisputes={isManager}
-          assignments={activeAssignments.map((ca) => ({
-            patientId: id,
-            patientName: patient.full_name,
-            therapistId: ca.therapist_id,
-            therapistName: ca.therapist?.profile?.full_name ?? "",
-            therapyId: ca.therapy_id,
-            therapyName: ca.therapy?.name ?? "",
-          }))}
         />
       )}
       {active === "record" && <RecordTab patientId={id} userId={user.id} canWrite={isLinkedTherapist} today={today} />}

@@ -47,11 +47,12 @@ const createSchema = z.object({
   duration: durationField,
   room_id: optionalUuid,
   notes: optionalText,
-  weeks: z.coerce.number().int().min(1).max(26, "Máximo de 26 semanas"),
+  weeks: z.coerce.number().int().min(1).max(26, "Máximo de 26 semanas").default(1),
 });
 
 export async function createAppointments(_prev: CreateAppointmentsState, formData: FormData): Promise<CreateAppointmentsState> {
   const user = await requireRole(STAFF_ROLES);
+  if (formData.get("frequency") === "recurring") return createRecurringSchedule(formData);
   const parsed = createSchema.safeParse(form(formData));
   if (!parsed.success) return fromZod(parsed.error);
   const { patient_id, assignment, date, time, duration, room_id, notes, weeks } = parsed.data;
@@ -83,6 +84,62 @@ export async function createAppointments(_prev: CreateAppointmentsState, formDat
         : `${created} sessões agendadas.`
       : `${created} de ${results.length} sessões agendadas.`;
   return { ok: created === results.length, message, results: results.length > 1 || created === 0 ? results : undefined };
+}
+
+const recurringSchema = createSchema.omit({ weeks: true }).extend({
+  weekdays: z.array(z.coerce.number().int().min(0).max(6)).min(1, "Escolha ao menos um dia da semana"),
+  ends_on: z
+    .union([z.literal(""), dateField])
+    .optional()
+    .transform((value) => value || null),
+});
+
+// Agenda fixa: the database keeps the next 8 weeks of sessions booked and rolls forward daily.
+async function createRecurringSchedule(formData: FormData): Promise<CreateAppointmentsState> {
+  const parsed = recurringSchema.safeParse({ ...form(formData), weekdays: formData.getAll("weekdays") });
+  if (!parsed.success) return fromZod(parsed.error);
+  const { patient_id, assignment, date, time, duration, room_id, notes, weekdays, ends_on } = parsed.data;
+  if (ends_on && ends_on < date) return failure("Verifique os campos destacados.", { ends_on: ["O término deve ser depois do início"] });
+  const [therapist_id, therapy_id] = assignment.split(":");
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("create_recurring_schedule", {
+    target_patient: patient_id,
+    target_therapist: therapist_id,
+    target_therapy: therapy_id,
+    target_room: room_id ?? undefined,
+    days: weekdays,
+    start_at: time,
+    minutes: duration,
+    first_day: date,
+    last_day: ends_on ?? undefined,
+    schedule_notes: notes ?? undefined,
+  });
+  if (error) return fromDb(error);
+  revalidateSchedule();
+
+  const results = (data ?? []).map((row) => ({ date: row.session_date, ok: row.created, error: row.reason ?? undefined }));
+  const created = results.filter((result) => result.ok).length;
+  const failed = results.filter((result) => !result.ok);
+  const message =
+    failed.length === 0
+      ? `Agenda fixa criada: ${created} sessões agendadas nas próximas semanas. As seguintes são geradas automaticamente.`
+      : `Agenda fixa criada: ${created} de ${results.length} sessões agendadas. Veja as datas não agendadas abaixo.`;
+  return { ok: failed.length === 0, message, results: failed.length ? failed : undefined };
+}
+
+const endRecurringSchema = z.object({ id: z.string().guid(), ends_on: dateField });
+
+export async function endRecurringSchedule(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireRole(STAFF_ROLES);
+  const parsed = endRecurringSchema.safeParse(form(formData));
+  if (!parsed.success) return fromZod(parsed.error);
+
+  const supabase = await createClient();
+  const { data: removed, error } = await supabase.rpc("end_recurring_schedule", { target: parsed.data.id, last_day: parsed.data.ends_on });
+  if (error) return fromDb(error);
+  revalidateSchedule();
+  return success(removed ? `Agenda fixa encerrada. ${removed} sessão(ões) futura(s) removida(s).` : "Agenda fixa encerrada.");
 }
 
 const updateSchema = z.object({

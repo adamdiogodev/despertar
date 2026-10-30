@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { durationMinutes, formatDateTime, localDateKey } from "@/lib/format";
 import { Alert, Badge, Card, CardTitle, EmptyState } from "@/components/ui/primitives";
 import { AppointmentDetailButton } from "@/components/schedule/appointment-detail";
-import { NewAppointment, type AssignmentOption } from "@/components/schedule/new-appointment";
+import { RecurringSchedules } from "@/components/schedule/recurring-schedules";
 import { STATUS_META, type Option, type ScheduleAppointment, type ScheduleViewer } from "@/components/schedule/types";
 import { RegisterSession } from "./session-note-form";
 import { ResolveDispute } from "./resolve-dispute";
@@ -18,14 +18,12 @@ export async function SessionsTab({
   patientId,
   patientName,
   viewer,
-  assignments,
   canSchedule,
   canResolveDisputes,
 }: {
   patientId: string;
   patientName: string;
   viewer: ScheduleViewer;
-  assignments: AssignmentOption[];
   canSchedule: boolean;
   canResolveDisputes: boolean;
 }) {
@@ -68,21 +66,7 @@ export async function SessionsTab({
   const renderList = (title: string, list: typeof rows, empty: string) => (
     <Card className="p-0">
       <div className="px-5 pt-5">
-        <CardTitle
-          action={
-            title === "Próximas sessões" && canSchedule ? (
-              <NewAppointment
-                trigger="+ Nova sessão"
-                assignments={assignments}
-                rooms={rooms}
-                defaultDate={localDateKey(now)}
-                defaultPatientId={patientId}
-              />
-            ) : undefined
-          }
-        >
-          {title}
-        </CardTitle>
+        <CardTitle>{title}</CardTitle>
       </div>
       {list.length === 0 ? (
         <EmptyState icon="📅" title={empty} />
@@ -154,6 +138,7 @@ export async function SessionsTab({
       <Alert tone="blue">
         👪 O registro de cada sessão (texto e fotos) é compartilhado com a família, que confirma no portal se a sessão foi realizada.
       </Alert>
+      <RecurringSchedules patientId={patientId} canManage={canSchedule} />
       {renderList("Próximas sessões", upcoming.data ?? [], "Nenhuma sessão agendada.")}
       {renderList("Sessões anteriores", past.data ?? [], "Nenhuma sessão realizada ainda.")}
     </div>
