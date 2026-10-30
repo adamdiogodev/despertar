@@ -1,5 +1,6 @@
 import { LinkButton, PageHeader, StatCard } from "@/components/ui/primitives";
 import { NewAppointment, type AssignmentOption } from "@/components/schedule/new-appointment";
+import { loadSchedulingOptions } from "@/components/schedule/scheduling-options";
 import { ScheduleFilters } from "@/components/schedule/schedule-filters";
 import { ScheduleView } from "@/components/schedule/schedule-view";
 import type { Option, ScheduleAppointment } from "@/components/schedule/types";
@@ -41,16 +42,11 @@ export default async function SchedulePage({ searchParams }: PageProps<"/schedul
   // RLS also returns colleagues' sessions with shared patients; therapists see their own by default.
   if (!isStaff && scope === "mine") query = query.eq("therapist_id", user.id);
 
-  const [{ data: rows, error }, { data: roomRows }, therapistsResult, assignmentsResult, pendingResult] = await Promise.all([
+  const [{ data: rows, error }, { data: roomRows }, therapistsResult, scheduling, pendingResult] = await Promise.all([
     query,
     supabase.from("rooms").select("id, name").eq("active", true).order("name"),
     isStaff ? supabase.from("therapists").select("id, profiles(full_name, active)") : Promise.resolve({ data: null }),
-    isStaff
-      ? supabase
-          .from("care_assignments")
-          .select("patient_id, therapist_id, therapy_id, patients(full_name, status), therapies(name), therapists(profiles(full_name))")
-          .or(`ends_on.is.null,ends_on.gte.${todayKey}`)
-      : Promise.resolve({ data: null }),
+    isStaff ? loadSchedulingOptions() : Promise.resolve(null),
     isStaff
       ? supabase.from("reschedule_requests").select("id", { count: "exact", head: true }).eq("status", "pending")
       : Promise.resolve({ count: 0 }),
@@ -81,16 +77,7 @@ export default async function SchedulePage({ searchParams }: PageProps<"/schedul
     .filter((row) => row.profiles?.active)
     .map((row) => ({ id: row.id, name: row.profiles?.full_name ?? "" }))
     .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-  const assignments: AssignmentOption[] = (assignmentsResult.data ?? [])
-    .filter((row) => row.patients && row.patients.status !== "inactive")
-    .map((row) => ({
-      patientId: row.patient_id,
-      patientName: row.patients?.full_name ?? "",
-      therapistId: row.therapist_id,
-      therapistName: row.therapists?.profiles?.full_name ?? "",
-      therapyId: row.therapy_id,
-      therapyName: row.therapies?.name ?? "",
-    }));
+  const assignments: AssignmentOption[] = scheduling?.assignments ?? [];
   const pendingRequests = pendingResult.count ?? 0;
 
   const count = (status: ScheduleAppointment["status"]) => appointments.filter((item) => item.status === status).length;

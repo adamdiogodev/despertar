@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { STAFF_ROLES, TEAM_ROLES, requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { ageFrom, formatDateTime } from "@/lib/format";
+import { ageFrom, formatDateTime, localDateKey } from "@/lib/format";
 import { Alert, Avatar, Badge, Card, CardTitle, EmptyState, InfoRow, LinkButton, PageHeader } from "@/components/ui/primitives";
 import { FamilyList, parseFamilyFilters } from "@/components/admin/family-list";
+import { NewAppointment } from "@/components/schedule/new-appointment";
+import { loadSchedulingOptions } from "@/components/schedule/scheduling-options";
 import { RECORD_STATUS } from "@/components/admin/labels";
 import { AddGuardianButton, FamilyEditForm, GuardianActions, InternalNotesForm, NewFamilyButton } from "../family-forms";
 
@@ -32,6 +34,8 @@ export default async function FamilyDetailPage({ params, searchParams }: PagePro
   ]);
   if (!family) notFound();
 
+  const scheduling =
+    isStaff && family.patients.length ? await loadSchedulingOptions({ patientIds: family.patients.map((patient) => patient.id) }) : null;
   const guardians = [...family.guardians].sort((a, b) => Number(b.is_primary) - Number(a.is_primary));
   const statusInfo = RECORD_STATUS[family.status];
 
@@ -142,8 +146,8 @@ export default async function FamilyDetailPage({ params, searchParams }: PagePro
                 {family.patients.map((patient) => {
                   const age = ageFrom(patient.birth_date);
                   return (
-                    <li key={patient.id}>
-                      <Link href={`/patients/${patient.id}`} className="flex items-center gap-3 py-3 hover:text-primary">
+                    <li key={patient.id} className="flex items-center gap-2">
+                      <Link href={`/patients/${patient.id}`} className="flex flex-1 items-center gap-3 py-3 hover:text-primary">
                         <Avatar name={patient.full_name} size={34} color="#9B59B6" />
                         <div className="flex-1 text-sm font-semibold text-t1">
                           {patient.full_name}
@@ -151,6 +155,16 @@ export default async function FamilyDetailPage({ params, searchParams }: PagePro
                         </div>
                         <Badge tone={RECORD_STATUS[patient.status].tone}>{PATIENT_STATUS[patient.status]}</Badge>
                       </Link>
+                      {scheduling?.assignments.some((item) => item.patientId === patient.id) && (
+                        <NewAppointment
+                          trigger="📅 Agendar"
+                          triggerVariant="ghost"
+                          assignments={scheduling.assignments.filter((item) => item.patientId === patient.id)}
+                          rooms={scheduling.rooms}
+                          defaultDate={localDateKey(new Date())}
+                          defaultPatientId={patient.id}
+                        />
+                      )}
                     </li>
                   );
                 })}

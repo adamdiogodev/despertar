@@ -3,6 +3,8 @@ import { STAFF_ROLES, TEAM_ROLES, requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ageFrom, localDateKey } from "@/lib/format";
 import { Avatar, Badge, Card, EmptyState, LinkButton, PageHeader, StatCard, Table, Td, Th, buttonClass, cn } from "@/components/ui/primitives";
+import { NewAppointment } from "@/components/schedule/new-appointment";
+import { loadSchedulingOptions } from "@/components/schedule/scheduling-options";
 import {
   PAGE_SIZE,
   RECORD_STATUSES,
@@ -62,6 +64,7 @@ export default async function PatientsPage({ searchParams }: PageProps<"/patient
   const { data: patients, count } = await query.range(from, from + PAGE_SIZE - 1);
   const total = count ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const scheduling = isStaff && patients?.length ? await loadSchedulingOptions({ patientIds: patients.map((patient) => patient.id) }) : null;
 
   let kpis: { total: number; active: number; inactive: number; newThisMonth: number } | null = null;
   if (isStaff) {
@@ -179,10 +182,22 @@ export default async function PatientsPage({ searchParams }: PageProps<"/patient
                     <Td>
                       <Badge tone={meta.tone}>{meta.label}</Badge>
                     </Td>
-                    <Td>
+                    <Td className="whitespace-nowrap">
                       <LinkButton href={`/patients/${patient.id}`} variant="ghost" size="sm">
                         📋 Ficha
                       </LinkButton>
+                      {scheduling?.assignments.some((item) => item.patientId === patient.id) && (
+                        <span className="ml-1 inline-block">
+                          <NewAppointment
+                            trigger="📅 Agendar"
+                            triggerVariant="ghost"
+                            assignments={scheduling.assignments.filter((item) => item.patientId === patient.id)}
+                            rooms={scheduling.rooms}
+                            defaultDate={today}
+                            defaultPatientId={patient.id}
+                          />
+                        </span>
+                      )}
                     </Td>
                   </tr>
                 );

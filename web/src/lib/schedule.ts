@@ -132,3 +132,20 @@ export function weeklyOccurrences(
     return { date, startsAt, endsAt };
   });
 }
+
+// Agenda fixa weekdays: 0 = Sunday … 6 = Saturday, like Date#getUTCDay and Postgres extract(dow).
+export const WEEKDAY_SHORT = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+// Days offered in the form — the grid shows Monday to Saturday.
+export const SCHEDULABLE_WEEKDAYS = [1, 2, 3, 4, 5, 6];
+
+export function weekdayOf(dateKey: string): number {
+  return parseKey(dateKey).getUTCDay();
+}
+
+// [4, 2] → "ter, qui"
+export function weekdaysLabel(days: number[]): string {
+  return [...new Set(days)]
+    .sort((a, b) => a - b)
+    .map((day) => WEEKDAY_SHORT[day])
+    .join(", ");
+}

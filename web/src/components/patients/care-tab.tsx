@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import { Alert, Badge, Card, CardTitle, EmptyState, Table, Td, Th } from "@/components/ui/primitives";
+import { NewAppointment, type AssignmentOption } from "@/components/schedule/new-appointment";
+import type { Option } from "@/components/schedule/types";
 import { AddCareAssignmentForm, EndCareAssignmentForm } from "./care-assignment-forms";
 import { isAssignmentActive } from "./patient-helpers";
 
@@ -13,7 +15,20 @@ type Assignment = {
   therapist: { id: string; profile: { full_name: string } | null } | null;
 };
 
-export async function CareTab({ patientId, assignments, canManage, today }: { patientId: string; assignments: Assignment[]; canManage: boolean; today: string }) {
+export async function CareTab({
+  patientId,
+  assignments,
+  canManage,
+  today,
+  scheduling,
+}: {
+  patientId: string;
+  assignments: Assignment[];
+  canManage: boolean;
+  today: string;
+  // Present when the viewer may schedule this patient.
+  scheduling: { assignments: AssignmentOption[]; rooms: Option[] } | null;
+}) {
   let therapists: { id: string; name: string }[] = [];
   let therapies: { id: string; name: string }[] = [];
   if (canManage) {
@@ -55,7 +70,7 @@ export async function CareTab({ patientId, assignments, canManage, today }: { pa
               <Th>Início</Th>
               <Th>Fim</Th>
               <Th>Situação</Th>
-              {canManage && <Th />}
+              {(canManage || scheduling) && <Th />}
             </tr>
           </thead>
           <tbody>
@@ -78,9 +93,24 @@ export async function CareTab({ patientId, assignments, canManage, today }: { pa
                       <Badge tone="gray">Encerrado</Badge>
                     )}
                   </Td>
-                  {canManage && (
-                    <Td>
-                      {assignment.ends_on === null && (
+                  {(canManage || scheduling) && (
+                    <Td className="whitespace-nowrap">
+                      {scheduling &&
+                        (assignment.ends_on === null || assignment.ends_on >= today) &&
+                        scheduling.assignments.some((item) => item.therapistId === assignment.therapist?.id && item.therapyId === assignment.therapy?.id) && (
+                          <span className="mr-2 inline-block">
+                            <NewAppointment
+                              trigger="Agendar"
+                              triggerVariant="outline"
+                              assignments={scheduling.assignments}
+                              rooms={scheduling.rooms}
+                              defaultDate={today}
+                              defaultPatientId={patientId}
+                              defaultAssignment={`${assignment.therapist?.id}:${assignment.therapy?.id}`}
+                            />
+                          </span>
+                        )}
+                      {canManage && assignment.ends_on === null && (
                         <EndCareAssignmentForm
                           assignmentId={assignment.id}
                           patientId={patientId}
